@@ -70,7 +70,8 @@
         flags:{
           retired:p.get('retired')==='1',
           unavailable:p.get('unavailable')==='1',
-          notInventoried:p.get('notInventoried')==='1'
+          notInventoried:p.get('notInventoried')==='1',
+          studyGuide:p.get('studyGuide')==='1'
         }
       };
     }else if(bridge==='part-flag-error'){
@@ -96,6 +97,11 @@
           notInventoried:!!data.flags.notInventoried
         };
         localStorage.setItem('roboticsInventoryPartFlags',JSON.stringify(all));
+      }catch(e){}
+      try{
+        const all=JSON.parse(localStorage.getItem('roboticsInventoryStudyGuide')||'{}');
+        all[data.partId]=!!data.flags.studyGuide;
+        localStorage.setItem('roboticsInventoryStudyGuide',JSON.stringify(all));
       }catch(e){}
     }
 
