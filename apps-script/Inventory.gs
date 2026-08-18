@@ -121,7 +121,9 @@ function moveInventoryState_(user, request) {
       newRow[h.Quantity] = request.quantity;
       if (h.Notes !== undefined) newRow[h.Notes] = 'State classified via web app; physical location still needs assignment.';
       if (h.NeedsReview !== undefined) newRow[h.NeedsReview] = true;
-      inventory.appendRow(newRow);
+
+      const firstOpenRow = findFirstOpenInventoryRow_(values, h);
+      inventory.getRange(firstOpenRow, 1, 1, newRow.length).setValues([newRow]);
     }
 
     const transactionId = appendTransferTransaction_(transactions, user, request, sourceTotal, sourceTotal - request.quantity);
@@ -134,6 +136,15 @@ function moveInventoryState_(user, request) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function findFirstOpenInventoryRow_(values, h) {
+  for (let r = 1; r < values.length; r++) {
+    const inventoryId = String(values[r][h.InventoryID] || '').trim();
+    const partId = String(values[r][h.PartID] || '').trim();
+    if (!inventoryId && !partId) return r + 1;
+  }
+  return values.length + 1;
 }
 
 function nextInventoryId_(values, idIndex) {
