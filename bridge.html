@@ -86,8 +86,22 @@
       payload={source:'robotics-inventory-backend',type:'inventory-error',ok:false,message:p.get('message')||'Inventory update failed.'};
     }
 
+    function persistPartFlags(data){
+      if(!data||data.type!=='part-flag-updated'||!data.ok||!data.partId||!data.flags)return;
+      try{
+        const all=JSON.parse(localStorage.getItem('roboticsInventoryPartFlags')||'{}');
+        all[data.partId]={
+          retired:!!data.flags.retired,
+          unavailable:!!data.flags.unavailable,
+          notInventoried:!!data.flags.notInventoried
+        };
+        localStorage.setItem('roboticsInventoryPartFlags',JSON.stringify(all));
+      }catch(e){}
+    }
+
     function deliverPayload(data){
       if(!data)return;
+      persistPartFlags(data);
       const envelope={id:Date.now()+'-'+Math.random().toString(36).slice(2),payload:data};
 
       try{
