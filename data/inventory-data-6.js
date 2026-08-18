@@ -186,3 +186,156 @@ window.addEventListener('load',function(){
   }
   decorateStudyBooks();
 });
+
+// Missing/broken image editor. A teacher/admin only pastes the URL; the backend
+// validates it and writes PARTS.ImageURL. Local overrides keep the new image
+// visible immediately while the static catalog snapshot catches up later.
+window.addEventListener('load',function(){
+  const pendingImages={};
+  let activeImagePopup=null;
+
+  function normalizeImageInput(value){
+    let text=String(value||'').trim();
+    const m=text.match(/^=IMAGE\(\s*["'](.+?)["']\s*\)$/i);
+    if(m)text=String(m[1]||'').trim();
+    return text;
+  }
+
+  function saveImageOverride(partId,url){
+    try{
+      const all=JSON.parse(localStorage.getItem('roboticsInventoryImageOverrides')||'{}');
+      if(url)all[partId]=url;else delete all[partId];
+      localStorage.setItem('roboticsInventoryImageOverrides',JSON.stringify(all));
+    }catch(e){}
+  }
+
+  function loadImageOverrides(){
+    try{
+      const all=JSON.parse(localStorage.getItem('roboticsInventoryImageOverrides')||'{}');
+      (window.INVENTORY_DATA||[]).forEach(function(x){if(all[x.i])x.g=all[x.i];});
+    }catch(e){}
+  }
+
+  function ensureImageEditorAssets(){
+    if(document.getElementById('image-link-editor-css'))return;
+    const style=document.createElement('style');
+    style.id='image-link-editor-css';
+    style.textContent='.thumb.image-missing{flex-direction:column;gap:7px;padding:7px}.thumb.image-missing .placeholder{padding:0}.image-link-button{border:1px solid #b8c0c5;background:white;color:#0B1A2E;border-radius:6px;padding:5px 7px;font-size:9px;font-weight:850;cursor:pointer;line-height:1.15}.image-link-button:hover{background:#F5F2E9;border-color:#C9A463}';
+    document.head.appendChild(style);
+  }
+
+  function partIdForCard(card){
+    const raw=card&&card.getAttribute('onclick')||'';
+    const match=raw.match(/P-\d{6}/);
+    return match?match[0]:'';
+  }
+
+  function decorateImageButtons(){
+    ensureImageEditorAssets();
+    document.querySelectorAll('.card').forEach(function(card){
+      const thumb=card.querySelector('.thumb');
+      if(!thumb||thumb.querySelector('.image-link-button')||!thumb.querySelector('.placeholder'))return;
+      const partId=partIdForCard(card);
+      if(!partId)return;
+      const x=(window.INVENTORY_DATA||[]).find(function(item){return item.i===partId;});
+      if(!x)return;
+      thumb.classList.add('image-missing');
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='image-link-button';
+      button.textContent=x.g?'Fix Image Link':'Add Image Link';
+      button.addEventListener('click',function(event){
+        event.stopPropagation();
+        const pasted=window.prompt('Paste the image web link for '+x.n+':',x.g||'');
+        if(pasted==null)return;
+        window.setPartImageUrl(partId,pasted,event);
+      });
+      thumb.appendChild(button);
+    });
+  }
+
+  window.setPartImageUrl=function(partId,value,event){
+    if(event)event.stopPropagation();
+    const x=(window.INVENTORY_DATA||[]).find(function(item){return item.i===partId;});
+    if(!x)return;
+    const imageUrl=normalizeImageInput(value);
+    if(!/^https?:\/\/\S+$/i.test(imageUrl)){
+      if(typeof window.showToast==='function')window.showToast('Paste a complete http:// or https:// image link.');
+      return;
+    }
+
+    const oldUrl=x.g||'';
+    const u=new URL(window.BACKEND_URL||'https://script.google.com/a/macros/mercersburg.edu/s/AKfycbwO-eAB-qrabGBpqbTpLWAkSUQUITiJQ3KPLIZEwjCJBN-wb8yyTgInNT-bXRbPinTA/exec');
+    u.searchParams.set('action','imageurl');
+    u.searchParams.set('partId',partId);
+    u.searchParams.set('imageUrl',imageUrl);
+    const popup=window.open(u.toString(),'partImageAction','popup,width=470,height=300,resizable=yes,scrollbars=yes');
+    if(!popup){
+      if(typeof window.showToast==='function')window.showToast('Popup blocked. Allow popups for this site to save image links.');
+      return;
+    }
+
+    activeImagePopup=popup;
+    pendingImages[partId]=oldUrl;
+    x.g=imageUrl;
+    saveImageOverride(partId,imageUrl);
+    if(typeof window.render==='function')window.render();
+  };
+
+  function closeImagePopup(){
+    if(!activeImagePopup)return;
+    try{if(!activeImagePopup.closed)activeImagePopup.close();}catch(e){}
+    activeImagePopup=null;
+  }
+
+  function applyImageBridge(data){
+    if(!data||data.source!=='robotics-inventory-backend')return;
+    if(data.type==='part-image-updated'&&data.ok){
+      const x=(window.INVENTORY_DATA||[]).find(function(item){return item.i===data.partId;});
+      if(x&&data.imageUrl){x.g=data.imageUrl;saveImageOverride(data.partId,data.imageUrl);}
+      delete pendingImages[data.partId];
+      if(typeof window.render==='function')window.render();
+      if(typeof window.showToast==='function')window.showToast('Image link saved');
+      closeImagePopup();
+    }else if(data.type==='part-image-error'){
+      const x=(window.INVENTORY_DATA||[]).find(function(item){return item.i===data.partId;});
+      if(x&&Object.prototype.hasOwnProperty.call(pendingImages,data.partId)){
+        x.g=pendingImages[data.partId]||'';
+        saveImageOverride(data.partId,x.g);
+      }
+      delete pendingImages[data.partId];
+      if(typeof window.render==='function')window.render();
+      if(typeof window.showToast==='function')window.showToast(data.message||'Image link update failed.');
+      closeImagePopup();
+    }
+  }
+
+  window.addEventListener('storage',function(e){
+    if(e.key!=='roboticsInventoryBridgeEvent'||!e.newValue)return;
+    try{const envelope=JSON.parse(e.newValue);applyImageBridge(envelope.payload||null);}catch(err){}
+  });
+
+  try{
+    const imageChannel=new BroadcastChannel('robotics-inventory');
+    imageChannel.onmessage=function(e){applyImageBridge(e.data||null);};
+  }catch(err){}
+
+  loadImageOverrides();
+  if(typeof window.render==='function'){
+    const priorRender=window.render;
+    window.render=function(){
+      const result=priorRender.apply(this,arguments);
+      decorateImageButtons();
+      return result;
+    };
+    window.render();
+  }else{
+    decorateImageButtons();
+  }
+
+  const grid=document.getElementById('grid');
+  if(grid){
+    const observer=new MutationObserver(function(){decorateImageButtons();});
+    observer.observe(grid,{childList:true,subtree:true});
+  }
+});
