@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Configure Inventory Backend</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#f5f6f4;color:#17202a;margin:0;padding:32px}
+    .card{max-width:620px;margin:8vh auto;background:#fff;border-top:6px solid #0B1A2E;border-radius:10px;padding:24px;box-shadow:0 10px 30px rgba(11,26,46,.12)}
+    .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#7B6240;font-weight:700}
+    h1{color:#0B1A2E;margin:6px 0 12px}
+    p{line-height:1.5}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="eyebrow">Robotics Inventory</div>
+    <h1>Backend configured</h1>
+    <p>The new Mercersburg Apps Script deployment has been saved. Returning to Inventory…</p>
+  </div>
+  <script>
+    localStorage.setItem('roboticsInventoryBackendUrl','https://script.google.com/a/macros/mercersburg.edu/s/AKfycbxkHJZWbyWr2Jf-ssK2mfeTAjfcJr-Wg1bzajl6ZBdbNjwfz_L6QWNx1ZZ1Z26dtAoXtg/exec');
+    setTimeout(function(){ location.replace('./?backend=20260818'); },700);
+  </script>
+</body>
+</html>
