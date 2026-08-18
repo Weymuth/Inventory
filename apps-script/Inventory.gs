@@ -25,8 +25,9 @@ function balancesFromValues_(values) {
     const qtyRaw = row[h.Quantity];
     const qty = typeof qtyRaw === 'number' && isFinite(qtyRaw) ? qtyRaw : Number(qtyRaw || 0);
     const sourceText = String(row[h.SourceQuantityText] || '').trim();
+    const sourceTextIsExactNumber = /^\d+(?:\.\d+)?$/.test(sourceText);
 
-    if (sourceText && !qty) result[partId].unresolved.push(sourceText);
+    if (sourceText && !qty && !sourceTextIsExactNumber) result[partId].unresolved.push(sourceText);
     if (!qty) continue;
 
     switch (state) {
