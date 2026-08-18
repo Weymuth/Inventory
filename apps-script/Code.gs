@@ -50,9 +50,14 @@ function doGet(e) {
   }
 }
 
-function confirmMoveFromUi(request, nonce) {
+function confirmMoveFromUi(partId, fromState, toState, quantity, nonce) {
   const user = requireTeacherOrAdmin_();
-  const normalized = normalizeMoveRequest_(request || {});
+  const normalized = normalizeMoveRequest_({
+    partId: partId,
+    fromState: fromState,
+    toState: toState,
+    quantity: quantity
+  });
   verifyNonce_(user.email, normalized, String(nonce || ''));
   const result = moveInventoryState_(user, normalized);
   const b = result.balances;
@@ -81,13 +86,14 @@ function normalizeMoveRequest_(p) {
   const partId = String(p.partId || '').trim().toUpperCase();
   const fromState = String(p.fromState || '').trim().toUpperCase();
   const toState = String(p.toState || '').trim().toUpperCase();
-  const quantity = Number(p.quantity || 0);
+  const quantityText = String(p.quantity == null ? '' : p.quantity).trim();
+  const quantity = Number(quantityText);
 
   if (!/^P-\d{6}$/.test(partId)) throw new Error('Invalid PartID.');
   if (!['UNCLASSIFIED', 'STORAGE', 'AVAILABLE'].includes(fromState)) throw new Error('Invalid source state.');
   if (!['STORAGE', 'AVAILABLE'].includes(toState)) throw new Error('Invalid destination state.');
   if (fromState === toState) throw new Error('Source and destination states must be different.');
-  if (!Number.isFinite(quantity) || quantity <= 0 || Math.floor(quantity) !== quantity) throw new Error('Quantity must be a positive whole number.');
+  if (!quantityText || !Number.isFinite(quantity) || quantity <= 0 || Math.floor(quantity) !== quantity) throw new Error('Quantity must be a positive whole number.');
 
   return { partId: partId, fromState: fromState, toState: toState, quantity: quantity };
 }
@@ -176,7 +182,13 @@ function confirmationPage_(user, request, nonce, available) {
             button.style.display = 'none';
           })
           .withFailureHandler(showFailure)
-          .confirmMoveFromUi(moveRequest, moveNonce);
+          .confirmMoveFromUi(
+            moveRequest.partId,
+            moveRequest.fromState,
+            moveRequest.toState,
+            String(moveRequest.quantity),
+            moveNonce
+          );
       }
 
       function showFailure(error) {
