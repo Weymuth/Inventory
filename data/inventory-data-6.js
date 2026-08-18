@@ -118,7 +118,7 @@ window.addEventListener('load',function(){
     const x=(window.INVENTORY_DATA||[]).find(function(item){return item.i===partId;});
     if(!x)return;
     const oldValue=isStudyGuide(x);
-    const u=new URL(window.BACKEND_URL||'https://script.google.com/a/macros/mercersburg.edu/s/AKfycbx61H9IramNQWFX4GeEJlRpI0S8_tOMWrqLT9jiv10HQv_xqaztYte4ycnWiPrSbuzMFQ/exec');
+    const u=new URL(window.BACKEND_URL||'https://script.google.com/a/macros/mercersburg.edu/s/AKfycbwO-eAB-qrabGBpqbTpLWAkSUQUITiJQ3KPLIZEwjCJBN-wb8yyTgInNT-bXRbPinTA/exec');
     u.searchParams.set('action','partflag');
     u.searchParams.set('partId',partId);
     u.searchParams.set('flag','STUDY_GUIDE');
