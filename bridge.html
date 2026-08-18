@@ -104,9 +104,7 @@
       persistPartFlags(data);
       const envelope={id:Date.now()+'-'+Math.random().toString(36).slice(2),payload:data};
 
-      try{
-        localStorage.setItem('roboticsInventoryBridgeEvent',JSON.stringify(envelope));
-      }catch(e){}
+      try{localStorage.setItem('roboticsInventoryBridgeEvent',JSON.stringify(envelope));}catch(e){}
 
       try{
         const channel=new BroadcastChannel('robotics-inventory');
@@ -115,8 +113,16 @@
       }catch(e){}
 
       try{
-        if(window.opener&&!window.opener.closed){
-          window.opener.postMessage(data,location.origin);
+        if(window.opener&&!window.opener.closed){window.opener.postMessage(data,location.origin);}
+      }catch(e){}
+    }
+
+    function closeBridgeWindow(){
+      try{window.close();}catch(e){}
+      try{
+        if(!window.closed){
+          window.open('','_self');
+          window.close();
         }
       }catch(e){}
     }
@@ -124,10 +130,8 @@
     if(payload){
       deliverPayload(payload);
       document.getElementById('title').textContent=payload.ok===false?'Inventory error':'Saved';
-      document.getElementById('message').textContent=payload.ok===false?(payload.message||'The operation failed.'):'The inventory page has been updated. This window will close.';
-      setTimeout(()=>{
-        try{window.close()}catch(e){}
-      },180);
+      document.getElementById('message').textContent=payload.ok===false?(payload.message||'The operation failed.'):'The inventory page has been updated.';
+      closeBridgeWindow();
     }else{
       document.getElementById('title').textContent='Nothing to return';
       document.getElementById('message').textContent='No inventory result was received.';
