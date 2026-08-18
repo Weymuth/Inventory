@@ -50,17 +50,20 @@ function doGet(e) {
   }
 }
 
-function doPost(e) {
-  try {
-    const user = requireTeacherOrAdmin_();
-    const request = normalizeMoveRequest_(e.parameter);
-    verifyNonce_(user.email, request, String(e.parameter.nonce || ''));
-    const result = moveInventoryState_(user, request);
-    const b = result.balances;
-    const returnUrl = buildFrontendUrl_({
+function confirmMoveFromUi(request, nonce) {
+  const user = requireTeacherOrAdmin_();
+  const normalized = normalizeMoveRequest_(request || {});
+  verifyNonce_(user.email, normalized, String(nonce || ''));
+  const result = moveInventoryState_(user, normalized);
+  const b = result.balances;
+
+  return {
+    ok: true,
+    transactionId: result.transactionId,
+    returnUrl: buildFrontendUrl_({
       bridge: 'inventory-updated',
       ok: '1',
-      partId: request.partId,
+      partId: normalized.partId,
       available: Number(b.available || 0),
       storage: Number(b.storage || 0),
       checkedOut: Number(b.checkedOut || 0),
@@ -70,16 +73,8 @@ function doPost(e) {
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role
-    });
-    return returnPage_('Inventory updated', 'The change was recorded successfully.', returnUrl);
-  } catch (err) {
-    const returnUrl = buildFrontendUrl_({
-      bridge: 'inventory-error',
-      ok: '0',
-      message: safeError_(err)
-    });
-    return returnPage_('Inventory error', safeError_(err), returnUrl);
-  }
+    })
+  };
 }
 
 function normalizeMoveRequest_(p) {
@@ -129,11 +124,10 @@ function verifyNonce_(email, request, nonce) {
 
 function confirmationPage_(user, request, nonce, available) {
   const title = request.fromState === 'UNCLASSIFIED' ? 'Classify inventory' : 'Move inventory';
-  const postUrl = ScriptApp.getService().getUrl();
-  if (!postUrl) throw new Error('Web app deployment URL is unavailable.');
-
+  const requestJson = JSON.stringify(request).replace(/</g, '\\u003c');
+  const nonceJson = JSON.stringify(String(nonce)).replace(/</g, '\\u003c');
   const body = `
-    <div class="card">
+    <div class="card" id="card">
       <div class="eyebrow">Robotics Inventory</div>
       <h1>${escapeHtml_(title)}</h1>
       <p>You are signed in as <strong>${escapeHtml_(user.firstName + ' ' + user.lastName)}</strong> (${escapeHtml_(user.role)}).</p>
@@ -145,15 +139,61 @@ function confirmationPage_(user, request, nonce, available) {
         <dt>Current source quantity</dt><dd>${available}</dd>
       </dl>
       <p class="note">This first migration step changes inventory state only. Physical room/cabinet/bin assignment will be added next.</p>
-      <form method="post" action="${escapeAttr_(postUrl)}" target="_top">
-        <input type="hidden" name="partId" value="${escapeAttr_(request.partId)}">
-        <input type="hidden" name="fromState" value="${escapeAttr_(request.fromState)}">
-        <input type="hidden" name="toState" value="${escapeAttr_(request.toState)}">
-        <input type="hidden" name="quantity" value="${request.quantity}">
-        <input type="hidden" name="nonce" value="${escapeAttr_(nonce)}">
-        <button type="submit">Confirm change</button>
-      </form>
-    </div>`;
+      <button id="confirmButton" type="button" onclick="confirmInventoryChange()">Confirm change</button>
+      <p id="working" class="muted" style="display:none">Recording change…</p>
+      <div id="result"></div>
+    </div>
+    <script>
+      const moveRequest = ${requestJson};
+      const moveNonce = ${nonceJson};
+
+      function confirmInventoryChange() {
+        const button = document.getElementById('confirmButton');
+        button.disabled = true;
+        document.getElementById('working').style.display = 'block';
+        document.getElementById('result').innerHTML = '';
+
+        google.script.run
+          .withSuccessHandler(function(result) {
+            document.getElementById('working').style.display = 'none';
+            if (!result || !result.ok) {
+              showFailure({message: 'The inventory change did not return a valid result.'});
+              return;
+            }
+            const container = document.getElementById('result');
+            const heading = document.createElement('h2');
+            heading.textContent = 'Inventory updated';
+            const text = document.createElement('p');
+            text.textContent = 'Transaction ' + result.transactionId + ' was recorded.';
+            const link = document.createElement('a');
+            link.className = 'return-button';
+            link.href = result.returnUrl;
+            link.target = '_top';
+            link.textContent = 'Return to Inventory';
+            container.appendChild(heading);
+            container.appendChild(text);
+            container.appendChild(link);
+            button.style.display = 'none';
+          })
+          .withFailureHandler(showFailure)
+          .confirmMoveFromUi(moveRequest, moveNonce);
+      }
+
+      function showFailure(error) {
+        document.getElementById('working').style.display = 'none';
+        const button = document.getElementById('confirmButton');
+        button.disabled = false;
+        const message = error && error.message ? error.message : String(error || 'Unknown error');
+        const container = document.getElementById('result');
+        container.innerHTML = '';
+        const heading = document.createElement('h2');
+        heading.textContent = 'Inventory error';
+        const text = document.createElement('p');
+        text.textContent = message;
+        container.appendChild(heading);
+        container.appendChild(text);
+      }
+    </script>`;
   return page_(title, body);
 }
 
@@ -164,7 +204,6 @@ function returnPage_(title, message, returnUrl) {
       <h1>${escapeHtml_(title)}</h1>
       <p>${escapeHtml_(message)}</p>
       <p><a class="return-button" href="${escapeAttr_(returnUrl)}" target="_top">Return to Inventory</a></p>
-      <p class="note">Google Apps Script runs inside a security sandbox, so this return button completes the handoff back to the inventory site.</p>
     </div>`;
   return page_(title, body);
 }
@@ -192,7 +231,7 @@ function simplePage_(title, message) {
 }
 
 function page_(title, body) {
-  return HtmlService.createHtmlOutput(`<!doctype html><html><head><base target="_top"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml_(title)}</title><style>body{font-family:Arial,sans-serif;background:#f5f6f4;color:#17202a;margin:0;padding:28px}.card{max-width:620px;margin:auto;background:#fff;border-top:6px solid #0B1A2E;border-radius:10px;padding:24px;box-shadow:0 10px 30px rgba(11,26,46,.12)}.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#7B6240;font-weight:700}h1{color:#0B1A2E;margin:6px 0 18px}dl{display:grid;grid-template-columns:180px 1fr;gap:8px 14px}dt{font-weight:700;color:#3D5266}dd{margin:0}.note{background:#F5F2E9;padding:12px;border-left:4px solid #C9A463}.return-button,button{display:inline-block;background:#0B1A2E;color:#fff;border:0;border-radius:7px;padding:11px 16px;font-weight:700;cursor:pointer;text-decoration:none}</style></head><body>${body}</body></html>`);
+  return HtmlService.createHtmlOutput(`<!doctype html><html><head><base target="_top"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml_(title)}</title><style>body{font-family:Arial,sans-serif;background:#f5f6f4;color:#17202a;margin:0;padding:28px}.card{max-width:620px;margin:auto;background:#fff;border-top:6px solid #0B1A2E;border-radius:10px;padding:24px;box-shadow:0 10px 30px rgba(11,26,46,.12)}.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#7B6240;font-weight:700}h1,h2{color:#0B1A2E;margin:6px 0 18px}dl{display:grid;grid-template-columns:180px 1fr;gap:8px 14px}dt{font-weight:700;color:#3D5266}dd{margin:0}.note{background:#F5F2E9;padding:12px;border-left:4px solid #C9A463}.muted{color:#67727c}.return-button,button{display:inline-block;background:#0B1A2E;color:#fff;border:0;border-radius:7px;padding:11px 16px;font-weight:700;cursor:pointer;text-decoration:none}button:disabled{opacity:.55;cursor:wait}</style></head><body>${body}</body></html>`);
 }
 
 function safeError_(err) {
