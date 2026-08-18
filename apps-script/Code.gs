@@ -3,6 +3,7 @@ const CONFIG = Object.freeze({
   FRONTEND_ORIGIN: 'https://weymuth.github.io',
   FRONTEND_URL: 'https://weymuth.github.io/Inventory/bridge.html',
   USERS_SHEET: 'USERS',
+  PARTS_SHEET: 'PARTS',
   INVENTORY_SHEET: 'INVENTORY',
   TRANSACTIONS_SHEET: 'TRANSACTIONS',
   TIME_ZONE: 'America/New_York'
@@ -31,6 +32,21 @@ function doGet(e) {
       return returnPage_('Connected', 'Authentication succeeded. Return to the inventory page to finish connecting.', returnUrl);
     }
 
+    if (action === 'partflag') {
+      const user = requireTeacherOrAdmin_();
+      const request = normalizePartFlagRequest_(e.parameter);
+      const result = setPartFlag_(user, request);
+      const returnUrl = buildFrontendUrl_({
+        bridge: 'part-flag-updated',
+        ok: '1',
+        partId: result.partId,
+        retired: result.retired ? '1' : '0',
+        unavailable: result.unavailable ? '1' : '0',
+        notInventoried: result.notInventoried ? '1' : '0'
+      });
+      return autoReturnPage_('Part status updated', returnUrl);
+    }
+
     if (action === 'move') {
       const user = requireTeacherOrAdmin_();
       const request = normalizeMoveRequest_(e.parameter);
@@ -46,6 +62,17 @@ function doGet(e) {
 
     throw new Error('Unknown backend action.');
   } catch (err) {
+    const action = String((e && e.parameter && e.parameter.action) || '').toLowerCase();
+    if (action === 'partflag') {
+      const returnUrl = buildFrontendUrl_({
+        bridge: 'part-flag-error',
+        ok: '0',
+        partId: String((e && e.parameter && e.parameter.partId) || ''),
+        flag: String((e && e.parameter && e.parameter.flag) || ''),
+        message: safeError_(err)
+      });
+      return autoReturnPage_('Part status error', returnUrl);
+    }
     return simplePage_('Inventory backend error', safeError_(err));
   }
 }
@@ -80,6 +107,79 @@ function confirmMoveFromUi(partId, fromState, toState, quantity, nonce) {
       role: user.role
     })
   };
+}
+
+function normalizePartFlagRequest_(p) {
+  const partId = String(p.partId || '').trim().toUpperCase();
+  const flag = String(p.flag || '').trim().toUpperCase().replace(/-/g, '_');
+  const enabledText = String(p.enabled == null ? '' : p.enabled).trim().toLowerCase();
+
+  if (!/^P-\d{6}$/.test(partId)) throw new Error('Invalid PartID.');
+  if (!['RETIRED', 'UNAVAILABLE', 'NOT_INVENTORIED'].includes(flag)) throw new Error('Invalid part status flag.');
+
+  let enabled;
+  if (['1', 'true', 'yes', 'on'].includes(enabledText)) enabled = true;
+  else if (['0', 'false', 'no', 'off'].includes(enabledText)) enabled = false;
+  else throw new Error('Invalid flag value.');
+
+  return { partId: partId, flag: flag, enabled: enabled };
+}
+
+function setPartFlag_(user, request) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(CONFIG.PARTS_SHEET);
+    if (!sheet) throw new Error('PARTS sheet not found.');
+
+    const values = sheet.getDataRange().getValues();
+    if (!values.length) throw new Error('PARTS sheet is empty.');
+    const h = headerMap_(values[0]);
+
+    if (h.ProductStatus === undefined || h.Unavailable === undefined || h.NotInventoried === undefined) {
+      throw new Error('PARTS status columns are missing.');
+    }
+
+    let rowIndex = 0;
+    let row = null;
+    for (let r = 1; r < values.length; r++) {
+      if (String(values[r][h.PartID] || '').trim().toUpperCase() === request.partId) {
+        rowIndex = r + 1;
+        row = values[r];
+        break;
+      }
+    }
+    if (!rowIndex || !row) throw new Error('Part not found.');
+
+    let retired = String(row[h.ProductStatus] || '').trim().toUpperCase() === 'RETIRED';
+    let unavailable = row[h.Unavailable] === true || String(row[h.Unavailable]).toUpperCase() === 'TRUE';
+    let notInventoried = row[h.NotInventoried] === true || String(row[h.NotInventoried]).toUpperCase() === 'TRUE';
+
+    if (request.flag === 'RETIRED') {
+      retired = request.enabled;
+      sheet.getRange(rowIndex, h.ProductStatus + 1).setValue(retired ? 'Retired' : 'Current');
+    } else if (request.flag === 'UNAVAILABLE') {
+      unavailable = request.enabled;
+      sheet.getRange(rowIndex, h.Unavailable + 1).setValue(unavailable);
+    } else if (request.flag === 'NOT_INVENTORIED') {
+      notInventoried = request.enabled;
+      sheet.getRange(rowIndex, h.NotInventoried + 1).setValue(notInventoried);
+    }
+
+    SpreadsheetApp.flush();
+
+    return {
+      partId: request.partId,
+      retired: retired,
+      unavailable: unavailable,
+      notInventoried: notInventoried,
+      changedBy: user.email
+    };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function normalizeMoveRequest_(p) {
@@ -206,6 +306,18 @@ function confirmationPage_(user, request, nonce, available) {
         container.appendChild(text);
       }
     </script>`;
+  return page_(title, body);
+}
+
+function autoReturnPage_(title, returnUrl) {
+  const targetJson = JSON.stringify(String(returnUrl)).replace(/</g, '\\u003c');
+  const body = `
+    <div class="card">
+      <div class="eyebrow">Robotics Inventory</div>
+      <h1>${escapeHtml_(title)}</h1>
+      <p class="muted">Saving…</p>
+    </div>
+    <script>window.location.replace(${targetJson});</script>`;
   return page_(title, body);
 }
 
