@@ -42,7 +42,8 @@ function doGet(e) {
         partId: result.partId,
         retired: result.retired ? '1' : '0',
         unavailable: result.unavailable ? '1' : '0',
-        notInventoried: result.notInventoried ? '1' : '0'
+        notInventoried: result.notInventoried ? '1' : '0',
+        studyGuide: result.studyGuide ? '1' : '0'
       });
       return autoReturnPage_('Part status updated', returnUrl);
     }
@@ -115,7 +116,7 @@ function normalizePartFlagRequest_(p) {
   const enabledText = String(p.enabled == null ? '' : p.enabled).trim().toLowerCase();
 
   if (!/^P-\d{6}$/.test(partId)) throw new Error('Invalid PartID.');
-  if (!['RETIRED', 'UNAVAILABLE', 'NOT_INVENTORIED'].includes(flag)) throw new Error('Invalid part status flag.');
+  if (!['RETIRED', 'UNAVAILABLE', 'NOT_INVENTORIED', 'STUDY_GUIDE'].includes(flag)) throw new Error('Invalid part status flag.');
 
   let enabled;
   if (['1', 'true', 'yes', 'on'].includes(enabledText)) enabled = true;
@@ -138,7 +139,7 @@ function setPartFlag_(user, request) {
     if (!values.length) throw new Error('PARTS sheet is empty.');
     const h = headerMap_(values[0]);
 
-    if (h.ProductStatus === undefined || h.Unavailable === undefined || h.NotInventoried === undefined) {
+    if (h.ProductStatus === undefined || h.Unavailable === undefined || h.NotInventoried === undefined || h.StudyGuide === undefined) {
       throw new Error('PARTS status columns are missing.');
     }
 
@@ -156,6 +157,7 @@ function setPartFlag_(user, request) {
     let retired = String(row[h.ProductStatus] || '').trim().toUpperCase() === 'RETIRED';
     let unavailable = row[h.Unavailable] === true || String(row[h.Unavailable]).toUpperCase() === 'TRUE';
     let notInventoried = row[h.NotInventoried] === true || String(row[h.NotInventoried]).toUpperCase() === 'TRUE';
+    let studyGuide = row[h.StudyGuide] === true || String(row[h.StudyGuide]).toUpperCase() === 'TRUE';
 
     if (request.flag === 'RETIRED') {
       retired = request.enabled;
@@ -166,6 +168,9 @@ function setPartFlag_(user, request) {
     } else if (request.flag === 'NOT_INVENTORIED') {
       notInventoried = request.enabled;
       sheet.getRange(rowIndex, h.NotInventoried + 1).setValue(notInventoried);
+    } else if (request.flag === 'STUDY_GUIDE') {
+      studyGuide = request.enabled;
+      sheet.getRange(rowIndex, h.StudyGuide + 1).setValue(studyGuide);
     }
 
     SpreadsheetApp.flush();
@@ -175,6 +180,7 @@ function setPartFlag_(user, request) {
       retired: retired,
       unavailable: unavailable,
       notInventoried: notInventoried,
+      studyGuide: studyGuide,
       changedBy: user.email
     };
   } finally {
