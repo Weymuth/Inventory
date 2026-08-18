@@ -187,10 +187,5 @@ window.addEventListener('load',function(){
   decorateStudyBooks();
 });
 
-// Load the authoritative image map after all six inventory chunks are present.
-(function(){
-  const s=document.createElement('script');
-  s.src='data/inventory-images.js?v=d22efcfbabbb1fb9dd7b76aa59919dfc4c13fd39';
-  s.onload=function(){if(typeof window.render==='function')window.render();};
-  document.head.appendChild(s);
-})();
+// Load the authoritative image map synchronously before index.html renders cards.
+document.write('<script src="data/inventory-images.js?v=04563206a471bc8625e112c3b9f7b07b773ee28c"><\\/script>');
