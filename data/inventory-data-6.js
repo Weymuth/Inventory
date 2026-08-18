@@ -186,3 +186,11 @@ window.addEventListener('load',function(){
   }
   decorateStudyBooks();
 });
+
+// Load the authoritative image map after all six inventory chunks are present.
+(function(){
+  const s=document.createElement('script');
+  s.src='data/inventory-images.js?v=d22efcfbabbb1fb9dd7b76aa59919dfc4c13fd39';
+  s.onload=function(){if(typeof window.render==='function')window.render();};
+  document.head.appendChild(s);
+})();
