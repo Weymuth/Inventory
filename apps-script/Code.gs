@@ -1,7 +1,7 @@
 const CONFIG = Object.freeze({
   SPREADSHEET_ID: '1qgV-9SOsLiF6lWj1-Ah2jCujwF7Dk_TSoA8X4nu92h0',
   FRONTEND_ORIGIN: 'https://weymuth.github.io',
-  FRONTEND_URL: 'https://weymuth.github.io/Inventory/',
+  FRONTEND_URL: 'https://weymuth.github.io/Inventory/bridge.html',
   USERS_SHEET: 'USERS',
   INVENTORY_SHEET: 'INVENTORY',
   TRANSACTIONS_SHEET: 'TRANSACTIONS',
