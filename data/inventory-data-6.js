@@ -14,21 +14,40 @@ window.INVENTORY_DATA=(window.INVENTORY_DATA||[]).concat([
 {"i":"P-000207","p":"VEX","n":"VEX Robot Battery NiMH 7.2V 3000mAh","m":"VEX Robotics","x":"276-2177","c":"Power","g":"https://content.vexrobotics.com/docs/276-2177-battery.jpg","r":0,"a":0,"t":0,"o":0,"z":0,"w":"","s":"Retired","iv":0}
 ]);
 
-// Frontend persistence shim. The main page defines setPartFlag/saveLocalFlags later;
-// wrap them after load so a deliberate toggle survives refresh immediately,
-// while the Apps Script backend remains the authoritative persistent store.
+// Frontend persistence + popup-control shim. The main page defines setPartFlag/
+// saveLocalFlags later. Wrap quick-status saves after load so the selected state
+// survives refresh immediately, while Apps Script remains authoritative.
 window.addEventListener('load',function(){
+  let activeFlagPopup=null;
+
+  function closeFlagPopup(){
+    if(!activeFlagPopup)return;
+    try{if(!activeFlagPopup.closed)activeFlagPopup.close();}catch(e){}
+    activeFlagPopup=null;
+  }
+
   if(typeof window.setPartFlag==='function'&&typeof window.saveLocalFlags==='function'){
     const originalSetPartFlag=window.setPartFlag;
     window.setPartFlag=function(partId,flag,enabled,event){
-      originalSetPartFlag.call(this,partId,flag,enabled,event);
+      const nativeOpen=window.open;
+      let opened=null;
+      window.open=function(){
+        opened=nativeOpen.apply(window,arguments);
+        return opened;
+      };
+      try{
+        originalSetPartFlag.call(this,partId,flag,enabled,event);
+      }finally{
+        window.open=nativeOpen;
+      }
+      if(opened)activeFlagPopup=opened;
       const x=(window.INVENTORY_DATA||[]).find(function(item){return item.i===partId;});
-      if(x) window.saveLocalFlags(x);
+      if(x)window.saveLocalFlags(x);
     };
   }
 
   function applyBridgePayload(data){
-    if(!data||data.source!=='robotics-inventory-backend') return;
+    if(!data||data.source!=='robotics-inventory-backend')return;
     if(data.type==='part-flag-updated'&&data.ok){
       const x=(window.INVENTORY_DATA||[]).find(function(item){return item.i===data.partId;});
       if(x&&typeof window.setLocalFlag==='function'&&typeof window.saveLocalFlags==='function'){
@@ -36,14 +55,17 @@ window.addEventListener('load',function(){
         window.setLocalFlag(x,'UNAVAILABLE',!!data.flags.unavailable);
         window.setLocalFlag(x,'NOT_INVENTORIED',!!data.flags.notInventoried);
         window.saveLocalFlags(x);
-        if(typeof window.render==='function') window.render();
-        if(window.selectedItem&&window.selectedItem.i===data.partId&&typeof window.refreshDetail==='function') window.refreshDetail();
+        if(typeof window.render==='function')window.render();
+        if(window.selectedItem&&window.selectedItem.i===data.partId&&typeof window.refreshDetail==='function')window.refreshDetail();
       }
+      closeFlagPopup();
+    }else if(data.type==='part-flag-error'){
+      closeFlagPopup();
     }
   }
 
   window.addEventListener('storage',function(e){
-    if(e.key!=='roboticsInventoryBridgeEvent'||!e.newValue) return;
+    if(e.key!=='roboticsInventoryBridgeEvent'||!e.newValue)return;
     try{const envelope=JSON.parse(e.newValue);applyBridgePayload(envelope.payload||null);}catch(err){}
   });
 
