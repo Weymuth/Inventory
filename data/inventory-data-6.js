@@ -339,3 +339,48 @@ window.addEventListener('load',function(){
     observer.observe(grid,{childList:true,subtree:true});
   }
 });
+
+// Manufacturer-confirmed image corrections. This runs synchronously because
+// inventory-data-6.js is the final catalog chunk loaded before index.html renders.
+(function(){
+  const imageFixes={
+    38:'https://cdn-shop.adafruit.com/970x728/5302-07.jpg',
+    39:'https://cdn-shop.adafruit.com/970x728/2124-09.jpg',
+    42:'https://cdn-shop.adafruit.com/970x728/3500-10.jpg',
+    43:'https://cdn-shop.adafruit.com/970x728/3316-09.jpg',
+    44:'https://cdn-shop.adafruit.com/970x728/1552-06.jpg',
+    45:'https://cdn-shop.adafruit.com/970x728/1083-07.jpg',
+    47:'https://cdn-shop.adafruit.com/970x728/935-11.jpg',
+    48:'https://cdn-shop.adafruit.com/970x728/2010-10.jpg',
+    49:'https://cdn-shop.adafruit.com/970x728/1501-13.jpg',
+    50:'https://cdn-shop.adafruit.com/970x728/2000-11.jpg',
+    51:'https://cdn-shop.adafruit.com/970x728/1334-04.jpg',
+    52:'https://cdn-shop.adafruit.com/970x728/3317-06.jpg',
+    53:'https://cdn-shop.adafruit.com/970x728/2345-13.jpg',
+    54:'https://cdn-shop.adafruit.com/970x728/4416-05.jpg',
+    56:'https://cdn-shop.adafruit.com/970x728/1770-06.jpg',
+    57:'https://cdn-shop.adafruit.com/970x728/805-03.jpg',
+    60:'https://cdn-shop.adafruit.com/970x728/2717-05.jpg',
+    61:'https://cdn-shop.adafruit.com/970x728/4464-04.jpg',
+    63:'https://cdn-shop.adafruit.com/970x728/358-11.jpg',
+    64:'https://cdn-shop.adafruit.com/970x728/641-05.jpg',
+    65:'https://cdn-shop.adafruit.com/970x728/640-06.jpg',
+    94:'https://www.sparkfun.com/media/catalog/product/cache/f3020b7489dcfc4d1d147cf4dad07b7f/1/1/11697-01b.jpg',
+    95:'https://www.sparkfun.com/media/catalog/product/cache/f3020b7489dcfc4d1d147cf4dad07b7f/1/3/13231-01.jpg',
+    96:'https://www.sparkfun.com/media/catalog/product/cache/f3020b7489dcfc4d1d147cf4dad07b7f/1/3/13711-01.jpg',
+    100:'https://www.sparkfun.com/media/catalog/product/cache/f3020b7489dcfc4d1d147cf4dad07b7f/0/9/09267-01.jpg',
+    101:'https://www.sparkfun.com/media/catalog/product/cache/f3020b7489dcfc4d1d147cf4dad07b7f/0/8/08463-01.jpg',
+    102:'https://www.sparkfun.com/media/catalog/product/cache/f3020b7489dcfc4d1d147cf4dad07b7f/1/2/12049-LilyPad_Arduino_USB_-_ATmega32U4_Board-01.jpg',
+    104:'https://www.sparkfun.com/media/catalog/product/cache/f3020b7489dcfc4d1d147cf4dad07b7f/1/1/11113-01b.jpg',
+    106:'https://www.sparkfun.com/media/catalog/product/cache/f3020b7489dcfc4d1d147cf4dad07b7f/0/9/09716-SparkFun_FTDI_Basic_Breakout_-_5V-01.jpg',
+    107:'https://www.sparkfun.com/media/catalog/product/cache/f3020b7489dcfc4d1d147cf4dad07b7f/1/5/15123-SparkFun_RedBoard_Qwiic-01a.jpg',
+    108:'https://www.sparkfun.com/media/catalog/product/cache/f3020b7489dcfc4d1d147cf4dad07b7f/1/3/13907-01.jpg',
+    109:'https://www.sparkfun.com/media/catalog/product/cache/f3020b7489dcfc4d1d147cf4dad07b7f/1/3/13716-01.jpg',
+    124:'https://www.sparkfun.com/media/catalog/product/cache/f3020b7489dcfc4d1d147cf4dad07b7f/1/4/14844-SparkFun_IR_Array_Breakout_-_55_Degree_FOV__MLX90640__Qwiic_-01.jpg',
+    149:'https://www.sparkfun.com/media/catalog/product/cache/f3020b7489dcfc4d1d147cf4dad07b7f/1/1/11678-01.jpg'
+  };
+  (window.INVENTORY_DATA||[]).forEach(function(x){
+    const n=Number(String(x.i||'').replace(/^P-/,''));
+    if(imageFixes[n])x.g=imageFixes[n];
+  });
+})();
