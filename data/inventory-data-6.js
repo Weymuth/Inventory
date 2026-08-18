@@ -186,6 +186,3 @@ window.addEventListener('load',function(){
   }
   decorateStudyBooks();
 });
-
-// Load the authoritative image map synchronously before index.html renders cards.
-document.write('<script src="data/inventory-images.js?v=04563206a471bc8625e112c3b9f7b07b773ee28c"><\/script>');
