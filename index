@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f8; }
+      h1 { color: #1a73e8; }
+      .container { max-width: 1200px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      .controls { display: flex; gap: 10px; margin-bottom: 20px; }
+      input, select, button { padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
+      input[type="text"] { flex-grow: 1; }
+      button { background-color: #1a73e8; color: white; border: none; cursor: pointer; }
+      button:hover { background-color: #1557b0; }
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+      th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 13px; }
+      th { background-color: #f1f3f4; }
+      tr:nth-child(even) { background-color: #f9f9f9; }
+      .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+      .card { background: #fafafa; padding: 15px; border: 1px solid #eee; margin-bottom: 20px; border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Hardware Inventory Dashboard</h1>
+
+      <!-- Add New Item Form -->
+      <div class="card">
+        <h3>Add New Inventory Item</h3>
+        <form id="addForm" onsubmit="handleFormSubmit(event)">
+          <div class="form-grid">
+            <input type="text" id="itemName" placeholder="Item Name *" required>
+            <input type="text" id="category" placeholder="Category">
+            <input type="text" id="subcategory" placeholder="Subcategory">
+            <input type="text" id="manufacturer" placeholder="Manufacturer">
+            <input type="text" id="partNumber" placeholder="Part Number">
+            <input type="number" id="quantity" placeholder="Quantity" value="1">
+            <input type="text" id="location" placeholder="Location">
+            <input type="text" id="platformCompatibility" placeholder="Platform Compatibility">
+            <input type="text" id="description" placeholder="Description">
+          </div>
+          <button type="submit">Add Item</button>
+        </form>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls">
+        <input type="text" id="searchInput" placeholder="Search by item name, category, or description..." onkeyup="filterItems()">
+        <button onclick="loadInventory()">Refresh Data</button>
+      </div>
+
+      <!-- Inventory Table -->
+      <table>
+        <thead>
+          <tr>
+            <th>Item Name</th>
+            <th>Category</th>
+            <th>Subcategory</th>
+            <th>Part #</th>
+            <th>Qty</th>
+            <th>Location</th>
+            <th>Compatibility</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryTable">
+          <tr><td colspan="8">Loading inventory...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <script>
+      let allItems = [];
+
+      window.onload = function() {
+        loadInventory();
+      };
+
+      function loadInventory() {
+        google.script.run
+          .withSuccessHandler(renderTable)
+          .getInventoryData();
+      }
+
+      function renderTable(data) {
+        allItems = data;
+        filterItems();
+      }
+
+      function filterItems() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const tbody = document.getElementById('inventoryTable');
+        tbody.innerHTML = '';
+
+        const filtered = allItems.filter(item => 
+          item.itemName.toLowerCase().includes(query) ||
+          item.category.toLowerCase().includes(query) ||
+          item.description.toLowerCase().includes(query) ||
+          item.partNumber.toString().toLowerCase().includes(query)
+        );
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8">No matching items found.</td></tr>';
+          return;
+        }
+
+        filtered.forEach(item => {
+          const row = `<tr>
+            <td><strong>${item.itemName}</strong></td>
+            <td>${item.category}</td>
+            <td>${item.subcategory}</td>
+            <td>${item.partNumber}</td>
+            <td>${item.quantity}</td>
+            <td>${item.location}</td>
+            <td>${item.platformCompatibility}</td>
+            <td>${item.description}</td>
+          </tr>`;
+          tbody.innerHTML += row;
+        });
+      }
+
+      function handleFormSubmit(event) {
+        event.preventDefault();
+        const newItem = {
+          itemName: document.getElementById('itemName').value,
+          category: document.getElementById('category').value,
+          subcategory: document.getElementById('subcategory').value,
+          manufacturer: document.getElementById('manufacturer').value,
+          partNumber: document.getElementById('partNumber').value,
+          quantity: document.getElementById('quantity').value,
+          location: document.getElementById('location').value,
+          platformCompatibility: document.getElementById('platformCompatibility').value,
+          description: document.getElementById('description').value
+        };
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            alert(res);
+            document.getElementById('addForm').reset();
+            loadInventory();
+          })
+          .addInventoryItem(newItem);
+      }
+    </script>
+  </body>
+</html>
