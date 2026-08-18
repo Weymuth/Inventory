@@ -2,214 +2,82 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0B1A2E">
   <title>Robotics Inventory</title>
   <style>
     :root{
-      --navy:#0B1A2E; --slate:#3D5266; --bronze:#7B6240;
-      --brass:#C9A463; --paper:#F5F2E9; --ink:#17202a;
-      --muted:#67727c; --line:#d7d9d6; --white:#fff;
-      --warn:#8a5a15; --warn-bg:#fff6df; --ok:#1f6b45;
-      --shadow:0 10px 28px rgba(11,26,46,.09);
+      --navy:#0B1A2E;--slate:#3D5266;--bronze:#7B6240;--brass:#C9A463;
+      --paper:#F5F2E9;--ink:#17202a;--muted:#67727c;--line:#d9ddda;--white:#fff;
+      --ok:#256b49;--warn:#8a5a15;--danger:#9b3030;--shadow:0 10px 28px rgba(11,26,46,.09)
     }
     *{box-sizing:border-box}
     body{margin:0;background:#f6f7f5;color:var(--ink);font-family:Inter,Arial,sans-serif}
+    button,input,select{font:inherit}
     header{background:var(--navy);color:#fff;border-bottom:5px solid var(--brass)}
-    .header-inner{max-width:1450px;margin:auto;padding:26px 28px 22px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
-    .eyebrow{font-size:12px;letter-spacing:.17em;text-transform:uppercase;color:#d7c69e;font-weight:700}
-    h1{font-size:32px;margin:4px 0 0;letter-spacing:-.02em}
-    .header-note{font-size:13px;color:#d3d9df;text-align:right;max-width:380px}
-    main{max-width:1450px;margin:auto;padding:24px 28px 60px}
-    .notice{background:var(--paper);border:1px solid #ded6c1;border-left:5px solid var(--brass);padding:12px 15px;border-radius:8px;margin-bottom:18px;font-size:14px}
-    .stats{display:grid;grid-template-columns:repeat(6,minmax(125px,1fr));gap:12px;margin-bottom:18px}
-    .stat{background:#fff;border:1px solid #e0e2df;border-radius:10px;padding:14px 15px;box-shadow:0 2px 8px rgba(11,26,46,.03)}
-    .stat .label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
-    .stat .value{font-size:25px;font-weight:800;margin-top:4px;color:var(--navy)}
-    .toolbar{background:#fff;border:1px solid #dfe2df;border-radius:12px;padding:14px;display:grid;grid-template-columns:minmax(260px,1.4fr) auto minmax(180px,.5fr);gap:12px;align-items:center;box-shadow:var(--shadow)}
-    input,select,button{font:inherit}
-    .search,.category{width:100%;border:1px solid #cdd2d5;border-radius:8px;padding:11px 12px;background:#fff;color:var(--ink)}
-    .search:focus,.category:focus{outline:2px solid rgba(201,164,99,.35);border-color:var(--brass)}
-    .tabs{display:flex;gap:6px;flex-wrap:wrap}
-    .tab{border:1px solid #cbd1d5;background:#fff;color:var(--slate);padding:9px 13px;border-radius:999px;cursor:pointer;font-weight:700}
-    .tab.active{background:var(--navy);border-color:var(--navy);color:#fff}
-    .result-bar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin:18px 2px 10px;color:var(--muted);font-size:13px}
-    .legend{display:flex;gap:12px;flex-wrap:wrap}
-    .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+    .header-inner{max-width:1450px;margin:auto;padding:24px 28px;display:flex;align-items:end;justify-content:space-between;gap:24px}
+    .eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#d8c69f;font-weight:800}
+    h1{font-size:32px;margin:5px 0 0;letter-spacing:-.02em}
+    .header-right{text-align:right;font-size:13px;color:#d3d9df}
+    main{max-width:1450px;margin:auto;padding:22px 28px 60px}
+    .notice{background:var(--paper);border:1px solid #ded6c1;border-left:5px solid var(--brass);padding:12px 15px;border-radius:8px;margin-bottom:16px;font-size:14px}
+    .backend-bar{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:16px;box-shadow:0 2px 9px rgba(11,26,46,.04)}
+    .backend-left{display:flex;align-items:center;gap:10px;min-width:0}
+    .status-dot{width:9px;height:9px;border-radius:50%;background:#9aa2a8;flex:0 0 auto}.status-dot.live{background:var(--ok)}
+    .backend-text{font-size:13px;color:var(--muted)}.backend-text strong{color:var(--ink)}
+    .small-btn{border:1px solid #c9cfd2;background:#fff;color:var(--navy);border-radius:7px;padding:8px 11px;font-weight:750;cursor:pointer}.small-btn.primary{background:var(--navy);border-color:var(--navy);color:#fff}
+    .stats{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:11px;margin-bottom:16px}
+    .stat{background:#fff;border:1px solid #e0e3e0;border-radius:10px;padding:13px 14px}.stat .label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:800}.stat .value{font-size:24px;font-weight:850;color:var(--navy);margin-top:4px}
+    .toolbar{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px;display:grid;grid-template-columns:minmax(260px,1.4fr) auto minmax(190px,.5fr);gap:12px;align-items:center;box-shadow:var(--shadow)}
+    .search,.category{width:100%;border:1px solid #cdd2d5;border-radius:8px;padding:10px 12px;background:#fff}.tabs{display:flex;gap:6px;flex-wrap:wrap}
+    .tab{border:1px solid #cbd1d5;background:#fff;color:var(--slate);padding:8px 12px;border-radius:999px;cursor:pointer;font-weight:750}.tab.active{background:var(--navy);border-color:var(--navy);color:#fff}
+    .result-bar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin:17px 2px 9px;color:var(--muted);font-size:13px}
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(315px,1fr));gap:13px}
-    .card{background:#fff;border:1px solid #dfe2df;border-radius:12px;overflow:hidden;display:grid;grid-template-columns:108px 1fr;min-height:166px;box-shadow:0 3px 12px rgba(11,26,46,.045)}
-    .image{background:#f1f2ef;display:flex;align-items:center;justify-content:center;min-height:166px;border-right:1px solid #e5e5e1;overflow:hidden}
-    .image img{width:100%;height:100%;object-fit:contain;padding:9px}
-    .placeholder{font-size:11px;text-align:center;color:#8b9399;padding:10px}
-    .body{padding:13px 14px 12px;min-width:0}
-    .topline{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
-    .program{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-radius:4px;padding:3px 6px;background:#e9edf1;color:var(--slate)}
-    .program.vex{background:#edf0f5;color:#253d62}
-    .review{font-size:10px;font-weight:800;color:var(--warn);background:var(--warn-bg);border:1px solid #efd79e;border-radius:4px;padding:3px 6px;white-space:nowrap}
-    .name{font-weight:800;font-size:16px;line-height:1.22;margin:8px 0 4px;color:var(--navy)}
-    .meta{font-size:12px;color:var(--muted);line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .qtys{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:10px}
-    .qty{border:1px solid #e0e3e1;background:#fafbf9;border-radius:6px;text-align:center;padding:5px 3px}
-    .qty b{display:block;font-size:15px;color:var(--navy)}
-    .qty span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#7b848b;margin-top:1px}
-    .qty.unclassified{background:#fff8e9;border-color:#ead6a8}
-    .source-text{margin-top:8px;font-size:11px;color:var(--warn);font-weight:700}
-    .empty{grid-column:1/-1;text-align:center;padding:50px 20px;background:#fff;border:1px solid #dfe2df;border-radius:12px;color:var(--muted)}
-    footer{max-width:1450px;margin:auto;padding:0 28px 35px;color:#7b858c;font-size:12px}
-    @media(max-width:900px){
-      .stats{grid-template-columns:repeat(3,1fr)}
-      .toolbar{grid-template-columns:1fr}
-      .header-inner{align-items:flex-start;flex-direction:column}
-      .header-note{text-align:left}
-    }
-    @media(max-width:560px){
-      main,.header-inner,footer{padding-left:15px;padding-right:15px}
-      .stats{grid-template-columns:repeat(2,1fr)}
-      .grid{grid-template-columns:1fr}
-      .card{grid-template-columns:88px 1fr}
-      .image{min-height:170px}
-      h1{font-size:26px}
-    }
+    .card{background:#fff;border:1px solid #dfe2df;border-radius:12px;overflow:hidden;display:grid;grid-template-columns:108px 1fr;min-height:166px;box-shadow:0 3px 12px rgba(11,26,46,.045);cursor:pointer;transition:.12s transform,.12s box-shadow}.card:hover{transform:translateY(-1px);box-shadow:0 7px 20px rgba(11,26,46,.09)}
+    .thumb{background:#eef0ed;display:flex;align-items:center;justify-content:center;min-height:166px;border-right:1px solid #e2e4e1;overflow:hidden}.thumb img{width:100%;height:100%;object-fit:contain;background:#fff;padding:8px}.thumb .placeholder{font-size:12px;font-weight:800;color:#7d878f;text-transform:uppercase;letter-spacing:.08em;text-align:center;padding:8px}
+    .card-body{padding:13px 14px 12px;min-width:0}.program{font-size:10px;font-weight:850;letter-spacing:.09em;text-transform:uppercase;color:var(--bronze)}.name{font-size:16px;font-weight:850;color:var(--navy);line-height:1.22;margin:4px 0 5px}.meta{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .counts{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:10px}.count{background:#f6f7f5;border-radius:6px;padding:6px;text-align:center}.count b{display:block;color:var(--navy);font-size:15px}.count span{font-size:8.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+    .review{display:inline-block;margin-top:8px;background:#fff4d7;color:#7f5412;border:1px solid #ead39d;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:800}.unresolved{font-size:10px;color:var(--warn);margin-top:7px}.empty{background:#fff;border:1px dashed #cfd4d1;border-radius:10px;padding:30px;text-align:center;color:var(--muted);grid-column:1/-1}
+    .modal{position:fixed;inset:0;background:rgba(6,16,29,.62);display:none;align-items:center;justify-content:center;padding:24px;z-index:50}.modal.open{display:flex}.dialog{background:#fff;width:min(850px,100%);max-height:92vh;overflow:auto;border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,.35)}
+    .dialog-head{background:var(--navy);color:#fff;border-bottom:4px solid var(--brass);padding:18px 20px;display:flex;justify-content:space-between;gap:16px;align-items:start}.dialog-head h2{margin:3px 0 0;font-size:23px}.close{border:0;background:transparent;color:#fff;font-size:26px;cursor:pointer;line-height:1}.dialog-body{padding:20px}
+    .detail-top{display:grid;grid-template-columns:220px 1fr;gap:22px}.detail-image{height:220px;border:1px solid #e1e4e1;border-radius:10px;background:#f4f5f3;display:flex;align-items:center;justify-content:center;overflow:hidden}.detail-image img{width:100%;height:100%;object-fit:contain;padding:12px;background:#fff}.detail-image .placeholder{font-size:13px;color:var(--muted);font-weight:800}
+    .facts{display:grid;grid-template-columns:145px 1fr;gap:7px 12px;font-size:13px;margin-top:5px}.facts dt{color:var(--muted);font-weight:700}.facts dd{margin:0;font-weight:650}.detail-counts{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:20px}.detail-count{border:1px solid var(--line);border-radius:9px;padding:11px;text-align:center}.detail-count .n{font-size:23px;font-weight:850;color:var(--navy)}.detail-count .l{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:800}
+    .admin-panel{margin-top:20px;border:1px solid #d8dcda;border-radius:10px;padding:15px;background:#fafbf9}.admin-panel h3{margin:0 0 5px;color:var(--navy);font-size:16px}.admin-note{font-size:12px;color:var(--muted);margin-bottom:11px}.action-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.qty{width:84px;border:1px solid #cbd0d3;border-radius:7px;padding:9px}.action{border:0;border-radius:7px;padding:9px 12px;font-weight:800;background:var(--navy);color:#fff;cursor:pointer}.action.secondary{background:var(--slate)}.action:disabled{opacity:.42;cursor:not-allowed}.migration-note{margin-top:12px;background:var(--paper);border-left:4px solid var(--brass);padding:10px 12px;font-size:12px}
+    .toast{position:fixed;right:22px;bottom:22px;max-width:430px;background:var(--navy);color:#fff;border-left:5px solid var(--brass);padding:12px 15px;border-radius:8px;box-shadow:var(--shadow);display:none;z-index:80}.toast.show{display:block}
+    @media(max-width:900px){.stats{grid-template-columns:repeat(3,1fr)}.toolbar{grid-template-columns:1fr}.header-inner{align-items:start;flex-direction:column}.header-right{text-align:left}.detail-top{grid-template-columns:1fr}.detail-image{height:180px}}@media(max-width:560px){main{padding:16px 14px 40px}.header-inner{padding:20px 16px}.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.detail-counts{grid-template-columns:repeat(2,1fr)}}
   </style>
 </head>
 <body>
-<header>
-  <div class="header-inner">
-    <div>
-      <div class="eyebrow">Mercersburg Robotics</div>
-      <h1>Robotics Inventory</h1>
-    </div>
-    <div class="header-note">VEX + RoboCup parts catalog and current inventory snapshot</div>
-  </div>
-</header>
-
+<header><div class="header-inner"><div><div class="eyebrow">Mercersburg Robotics</div><h1>Robotics Inventory</h1></div><div class="header-right">VEX + RoboCup hardware<br><span id="modeText">Snapshot inventory browser</span></div></div></header>
 <main>
-  <div class="notice"><strong>Read-only snapshot.</strong> This page now works directly on GitHub Pages. Inventory edits are still made in the master Google Sheet until the secure write-back service is connected.</div>
-
-  <section class="stats" aria-label="Inventory summary">
-    <div class="stat"><div class="label">Catalog Parts</div><div class="value" id="s-parts">—</div></div>
-    <div class="stat"><div class="label">Available</div><div class="value" id="s-available">—</div></div>
-    <div class="stat"><div class="label">Storage</div><div class="value" id="s-storage">—</div></div>
-    <div class="stat"><div class="label">Checked Out</div><div class="value" id="s-out">—</div></div>
-    <div class="stat"><div class="label">Unclassified</div><div class="value" id="s-unclassified">—</div></div>
-    <div class="stat"><div class="label">Needs Review</div><div class="value" id="s-review">—</div></div>
-  </section>
-
-  <section class="toolbar">
-    <input id="search" class="search" type="search" placeholder="Search part name, manufacturer, part number, or category…" autocomplete="off">
-    <div class="tabs" aria-label="Program filter">
-      <button class="tab active" data-program="All">All</button>
-      <button class="tab" data-program="VEX">VEX</button>
-      <button class="tab" data-program="RoboCup">RoboCup</button>
-    </div>
-    <select id="category" class="category" aria-label="Category filter"><option value="All">All categories</option></select>
-  </section>
-
-  <div class="result-bar">
-    <div id="result-count">Loading inventory…</div>
-    <div class="legend">
-      <span><i class="dot" style="background:#1f6b45"></i>Available</span>
-      <span><i class="dot" style="background:#7b6240"></i>Storage</span>
-      <span><i class="dot" style="background:#3d5266"></i>Checked out</span>
-      <span><i class="dot" style="background:#c9a463"></i>Unclassified</span>
-    </div>
-  </div>
-
-  <section id="grid" class="grid"></section>
+  <div class="notice"><strong>Inventory migration:</strong> current imported counts remain <strong>Unclassified</strong> until they are assigned to Storage or Available. Physical room/cabinet/drawer/bin locations will be the next layer.</div>
+  <div class="backend-bar"><div class="backend-left"><span id="backendDot" class="status-dot"></span><div id="backendText" class="backend-text"><strong>Snapshot mode</strong> — live Google Sheet write-back is not connected yet.</div></div><div><button id="setBackendBtn" class="small-btn" onclick="setBackendUrl()">Set backend</button> <button id="connectBtn" class="small-btn primary" onclick="connectLive()" disabled>Connect live</button></div></div>
+  <div class="stats"><div class="stat"><div class="label">Catalog Parts</div><div class="value" id="statParts">0</div></div><div class="stat"><div class="label">Exact Units</div><div class="value" id="statUnits">0</div></div><div class="stat"><div class="label">Available</div><div class="value" id="statAvailable">0</div></div><div class="stat"><div class="label">Storage</div><div class="value" id="statStorage">0</div></div><div class="stat"><div class="label">Checked Out</div><div class="value" id="statChecked">0</div></div><div class="stat"><div class="label">Unclassified</div><div class="value" id="statUnclassified">0</div></div></div>
+  <div class="toolbar"><input id="search" class="search" type="search" placeholder="Search part, manufacturer, part number, category..." oninput="render()"><div class="tabs"><button class="tab active" data-program="ALL" onclick="selectProgram(this)">All</button><button class="tab" data-program="RoboCup" onclick="selectProgram(this)">RoboCup</button><button class="tab" data-program="VEX" onclick="selectProgram(this)">VEX</button></div><select id="category" class="category" onchange="render()"><option value="ALL">All categories</option></select></div>
+  <div class="result-bar"><span id="resultCount"></span><span>Click a part for details</span></div><div id="grid" class="grid"></div>
 </main>
-
-<footer>Snapshot generated from <strong>Robotics Inventory Master - Working</strong>. Unclassified quantities are preserved exactly until physical inventory is sorted into Storage or Available.</footer>
-
-<script>window.INVENTORY_DATA=[];</script>
-<script src="data/inventory-data-1.js"></script>
-<script src="data/inventory-data-2.js"></script>
-<script src="data/inventory-data-3.js"></script>
-<script src="data/inventory-data-4.js"></script>
-<script src="data/inventory-data-5.js"></script>
+<div id="modal" class="modal" onclick="backdropClose(event)"><div class="dialog"><div class="dialog-head"><div><div id="detailProgram" class="eyebrow"></div><h2 id="detailName"></h2></div><button class="close" onclick="closeDetail()" aria-label="Close">×</button></div><div class="dialog-body"><div class="detail-top"><div id="detailImage" class="detail-image"></div><div><dl class="facts"><dt>Part ID</dt><dd id="detailId"></dd><dt>Manufacturer</dt><dd id="detailManufacturer"></dd><dt>Part number</dt><dd id="detailPartNumber"></dd><dt>Category</dt><dd id="detailCategory"></dd><dt>Review status</dt><dd id="detailReview"></dd></dl><div id="detailUnresolved" class="migration-note" style="display:none"></div></div></div><div class="detail-counts"><div class="detail-count"><div id="detailAvailable" class="n">0</div><div class="l">Available</div></div><div class="detail-count"><div id="detailStorage" class="n">0</div><div class="l">Storage</div></div><div class="detail-count"><div id="detailChecked" class="n">0</div><div class="l">Checked Out</div></div><div class="detail-count"><div id="detailUnclassified" class="n">0</div><div class="l">Unclassified</div></div></div><div class="admin-panel"><h3>Inventory actions</h3><div id="adminNote" class="admin-note">Connect the secure backend to enable inventory changes.</div><div class="action-row"><label for="actionQty"><strong>Qty</strong></label><input id="actionQty" class="qty" type="number" min="1" step="1" value="1"><button id="toStorageBtn" class="action secondary" onclick="startMove('UNCLASSIFIED','STORAGE')" disabled>Classify → Storage</button><button id="toAvailableBtn" class="action secondary" onclick="startMove('UNCLASSIFIED','AVAILABLE')" disabled>Classify → Available</button><button id="storageAvailableBtn" class="action" onclick="startMove('STORAGE','AVAILABLE')" disabled>Storage → Available</button></div><div class="migration-note">Every confirmed change will be validated server-side, written under a lock, and appended to the TRANSACTIONS ledger.</div></div></div></div></div>
+<div id="toast" class="toast"></div>
+<script>window.INVENTORY_DATA=[];</script><script src="data/inventory-data-1.js"></script><script src="data/inventory-data-2.js"></script><script src="data/inventory-data-3.js"></script><script src="data/inventory-data-4.js"></script><script src="data/inventory-data-5.js"></script>
 <script>
-(() => {
-  const parts = Array.isArray(window.INVENTORY_DATA) ? window.INVENTORY_DATA : [];
-  let program = 'All';
-
-  const $ = id => document.getElementById(id);
-  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const sum = key => parts.reduce((n,p) => n + (Number(p[key]) || 0), 0);
-
-  function renderStats(){
-    $('s-parts').textContent = parts.length;
-    $('s-available').textContent = sum('a');
-    $('s-storage').textContent = sum('t');
-    $('s-out').textContent = sum('o');
-    $('s-unclassified').textContent = sum('z');
-    $('s-review').textContent = parts.filter(p => p.r).length;
-  }
-
-  function initCategories(){
-    [...new Set(parts.map(p => p.c).filter(Boolean))].sort((a,b)=>a.localeCompare(b)).forEach(c => {
-      const opt=document.createElement('option');
-      opt.value=c; opt.textContent=c; $('category').appendChild(opt);
-    });
-  }
-
-  function current(){
-    const q=$('search').value.trim().toLowerCase();
-    const cat=$('category').value;
-    return parts.filter(p => {
-      if(program !== 'All' && p.p !== program) return false;
-      if(cat !== 'All' && p.c !== cat) return false;
-      if(!q) return true;
-      return [p.n,p.m,p.x,p.c,p.i].some(v => String(v || '').toLowerCase().includes(q));
-    });
-  }
-
-  function imageBlock(p){
-    if(!p.g) return '<div class="image"><div class="placeholder">No image<br>available</div></div>';
-    return `<a class="image" href="${esc(p.g)}" target="_blank" rel="noopener"><img src="${esc(p.g)}" alt="${esc(p.n)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;placeholder&quot;>Image link<br>available</div>'"></a>`;
-  }
-
-  function card(p){
-    const maker = p.m || 'Manufacturer not set';
-    const pn = p.x ? ` · ${p.x}` : '';
-    const fuzzy = p.w ? `<div class="source-text">Source count: ${esc(p.w)}</div>` : '';
-    return `<article class="card">
-      ${imageBlock(p)}
-      <div class="body">
-        <div class="topline">
-          <span class="program ${p.p==='VEX'?'vex':''}">${esc(p.p)}</span>
-          ${p.r ? '<span class="review">Needs review</span>' : ''}
-        </div>
-        <div class="name">${esc(p.n)}</div>
-        <div class="meta">${esc(maker)}${esc(pn)}</div>
-        <div class="meta">${esc(p.c || 'Uncategorized')} · ${esc(p.i)}</div>
-        <div class="qtys">
-          <div class="qty"><b>${p.a||0}</b><span>Available</span></div>
-          <div class="qty"><b>${p.t||0}</b><span>Storage</span></div>
-          <div class="qty"><b>${p.o||0}</b><span>Out</span></div>
-          <div class="qty unclassified"><b>${p.z||0}</b><span>Unclassified</span></div>
-        </div>
-        ${fuzzy}
-      </div>
-    </article>`;
-  }
-
-  function render(){
-    const rows=current();
-    $('result-count').textContent=`Showing ${rows.length} of ${parts.length} parts`;
-    $('grid').innerHTML=rows.length ? rows.map(card).join('') : '<div class="empty">No parts match those filters.</div>';
-  }
-
-  document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => {
-    program=btn.dataset.program;
-    document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b===btn));
-    render();
-  }));
-  $('search').addEventListener('input',render);
-  $('category').addEventListener('change',render);
-
-  renderStats();
-  initCategories();
-  render();
-})();
+const items=window.INVENTORY_DATA||[];let selectedProgram='ALL',selectedItem=null,liveUser=null,liveConnected=false,backendUrl=localStorage.getItem('roboticsInventoryBackendUrl')||'';
+function sumField(k){return items.reduce((s,x)=>s+Number(x[k]||0),0)}function exactUnits(){return items.reduce((s,x)=>s+Number(x.a||0)+Number(x.t||0)+Number(x.o||0)+Number(x.z||0),0)}
+function populateCategories(){const cats=[...new Set(items.map(x=>x.c).filter(Boolean))].sort(),sel=document.getElementById('category');cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o)})}
+function updateStats(){statParts.textContent=items.length.toLocaleString();statUnits.textContent=exactUnits().toLocaleString();statAvailable.textContent=sumField('a').toLocaleString();statStorage.textContent=sumField('t').toLocaleString();statChecked.textContent=sumField('o').toLocaleString();statUnclassified.textContent=sumField('z').toLocaleString()}
+function selectProgram(btn){selectedProgram=btn.dataset.program;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===btn));render()}
+function safe(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function render(){updateStats();const q=search.value.trim().toLowerCase(),cat=category.value,filtered=items.filter(x=>{if(selectedProgram!=='ALL'&&x.p!==selectedProgram)return false;if(cat!=='ALL'&&x.c!==cat)return false;if(!q)return true;return[x.i,x.n,x.m,x.x,x.c,x.p].some(v=>String(v||'').toLowerCase().includes(q))});resultCount.textContent=`${filtered.length} part${filtered.length===1?'':'s'} shown`;if(!filtered.length){grid.innerHTML='<div class="empty">No parts match those filters.</div>';return}grid.innerHTML=filtered.map(x=>`<article class="card" onclick="openDetail('${x.i}')"><div class="thumb">${x.g?`<img src="${safe(x.g)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<div class=&quot;placeholder&quot;>Image unavailable</div>'">`:`<div class="placeholder">${safe(x.p)}<br>Part</div>`}</div><div class="card-body"><div class="program">${safe(x.p)}</div><div class="name">${safe(x.n)}</div><div class="meta">${safe(x.m||'Manufacturer not listed')}${x.x?' · '+safe(x.x):''}</div><div class="counts"><div class="count"><b>${Number(x.a||0)}</b><span>Avail.</span></div><div class="count"><b>${Number(x.t||0)}</b><span>Storage</span></div><div class="count"><b>${Number(x.o||0)}</b><span>Out</span></div><div class="count"><b>${Number(x.z||0)}</b><span>Unclass.</span></div></div>${x.r?'<span class="review">Needs Review</span>':''}${x.w?`<div class="unresolved">Count note: ${safe(x.w)}</div>`:''}</div></article>`).join('')}
+function openDetail(id){selectedItem=items.find(x=>x.i===id)||null;if(!selectedItem)return;refreshDetail();modal.classList.add('open');document.body.style.overflow='hidden'}
+function refreshDetail(){const x=selectedItem;if(!x)return;detailProgram.textContent=x.p;detailName.textContent=x.n;detailId.textContent=x.i;detailManufacturer.textContent=x.m||'Not listed';detailPartNumber.textContent=x.x||'Not listed';detailCategory.textContent=x.c||'Not categorized';detailReview.textContent=x.r?'Needs review':'No review flag';detailAvailable.textContent=Number(x.a||0);detailStorage.textContent=Number(x.t||0);detailChecked.textContent=Number(x.o||0);detailUnclassified.textContent=Number(x.z||0);detailImage.innerHTML=x.g?`<img src="${safe(x.g)}" alt="">`:'<div class="placeholder">No image available</div>';if(x.w){detailUnresolved.style.display='block';detailUnresolved.textContent='Unresolved source count: '+x.w}else detailUnresolved.style.display='none';updateActionState()}
+function updateActionState(){if(!selectedItem)return;const canWrite=liveConnected&&liveUser&&['ADMIN','TEACHER'].includes(liveUser.role);toStorageBtn.disabled=!canWrite||Number(selectedItem.z||0)<=0;toAvailableBtn.disabled=!canWrite||Number(selectedItem.z||0)<=0;storageAvailableBtn.disabled=!canWrite||Number(selectedItem.t||0)<=0;if(!backendUrl)adminNote.textContent='Backend source is ready, but no deployed Apps Script URL is configured yet.';else if(!liveConnected)adminNote.textContent='Click Connect live at the top of the page to authenticate with Google Workspace.';else if(!canWrite)adminNote.textContent=`Signed in as ${liveUser.firstName} ${liveUser.lastName} (${liveUser.role}). Teacher/Admin permission is required for these actions.`;else adminNote.textContent=`Signed in as ${liveUser.firstName} ${liveUser.lastName} (${liveUser.role}).`}
+function closeDetail(){modal.classList.remove('open');document.body.style.overflow=''}function backdropClose(e){if(e.target.id==='modal')closeDetail()}
+function setBackendUrl(){const entered=prompt('Paste the deployed Google Apps Script /exec URL:',backendUrl);if(entered===null)return;const value=entered.trim();if(value&&!/^https:\/\/script\.google\.com\//i.test(value)){showToast('That does not look like a Google Apps Script web-app URL.');return}backendUrl=value;if(value)localStorage.setItem('roboticsInventoryBackendUrl',value);else localStorage.removeItem('roboticsInventoryBackendUrl');updateBackendBar();updateActionState()}
+function updateBackendBar(){if(liveConnected&&liveUser){backendDot.classList.add('live');backendText.innerHTML=`<strong>Live Sheet connected</strong> — ${safe(liveUser.firstName)} ${safe(liveUser.lastName)} · ${safe(liveUser.role)}`;connectBtn.textContent='Refresh live data';connectBtn.disabled=false;modeText.textContent='Live inventory session'}else if(backendUrl){backendDot.classList.remove('live');backendText.innerHTML='<strong>Backend configured</strong> — authenticate to load live balances and enable authorized actions.';connectBtn.textContent='Connect live';connectBtn.disabled=false}else{backendDot.classList.remove('live');backendText.innerHTML='<strong>Snapshot mode</strong> — Apps Script backend files are ready but not deployed/connected.';connectBtn.textContent='Connect live';connectBtn.disabled=true}}
+function backendWindow(url){return window.open(url,'roboticsInventoryBackend','popup,width=620,height=700,resizable=yes,scrollbars=yes')}function connectLive(){if(!backendUrl){setBackendUrl();if(!backendUrl)return}const url=new URL(backendUrl);url.searchParams.set('action','bootstrap');backendWindow(url.toString())}
+function startMove(fromState,toState){if(!backendUrl||!liveConnected||!selectedItem)return;const qty=Number(actionQty.value||0);if(!Number.isInteger(qty)||qty<=0){showToast('Enter a positive whole-number quantity.');return}const sourceQty=fromState==='UNCLASSIFIED'?Number(selectedItem.z||0):Number(selectedItem.t||0);if(qty>sourceQty){showToast(`Only ${sourceQty} unit${sourceQty===1?' is':'s are'} in ${fromState}.`);return}const url=new URL(backendUrl);url.searchParams.set('action','move');url.searchParams.set('partId',selectedItem.i);url.searchParams.set('fromState',fromState);url.searchParams.set('toState',toState);url.searchParams.set('quantity',String(qty));backendWindow(url.toString())}
+function applyBalances(partId,b){const x=items.find(i=>i.i===partId);if(!x||!b)return;x.a=Number(b.available||0);x.t=Number(b.storage||0);x.o=Number(b.checkedOut||0);x.z=Number(b.unclassified||0);x.w=Array.isArray(b.unresolved)?b.unresolved.join(' / '):''}
+window.addEventListener('message',e=>{const d=e.data||{};if(d.source!=='robotics-inventory-backend')return;if(d.type==='bootstrap'&&d.ok){liveUser=d.user||null;Object.entries(d.balances||{}).forEach(([partId,b])=>applyBalances(partId,b));liveConnected=true;updateBackendBar();render();if(selectedItem)refreshDetail();showToast('Live Google Sheet balances loaded.')}else if(d.type==='inventory-updated'&&d.ok){applyBalances(d.partId,d.balances);render();if(selectedItem&&selectedItem.i===d.partId)refreshDetail();showToast('Inventory updated · '+(d.transactionId||'transaction recorded'))}else if(d.type==='inventory-error')showToast(d.message||'Inventory update failed.')});
+function showToast(msg){toast.textContent=msg;toast.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>toast.classList.remove('show'),4500)}document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDetail()});populateCategories();updateBackendBar();render();
 </script>
 </body>
 </html>
