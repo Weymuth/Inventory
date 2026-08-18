@@ -48,6 +48,19 @@ function doGet(e) {
       return autoReturnPage_('Part status updated', returnUrl);
     }
 
+    if (action === 'imageurl') {
+      const user = requireTeacherOrAdmin_();
+      const request = normalizePartImageRequest_(e.parameter);
+      const result = setPartImageUrl_(user, request);
+      const returnUrl = buildFrontendUrl_({
+        bridge: 'part-image-updated',
+        ok: '1',
+        partId: result.partId,
+        imageUrl: result.imageUrl
+      });
+      return autoReturnPage_('Part image updated', returnUrl);
+    }
+
     if (action === 'move') {
       const user = requireTeacherOrAdmin_();
       const request = normalizeMoveRequest_(e.parameter);
@@ -73,6 +86,15 @@ function doGet(e) {
         message: safeError_(err)
       });
       return autoReturnPage_('Part status error', returnUrl);
+    }
+    if (action === 'imageurl') {
+      const returnUrl = buildFrontendUrl_({
+        bridge: 'part-image-error',
+        ok: '0',
+        partId: String((e && e.parameter && e.parameter.partId) || ''),
+        message: safeError_(err)
+      });
+      return autoReturnPage_('Part image error', returnUrl);
     }
     return simplePage_('Inventory backend error', safeError_(err));
   }
@@ -181,6 +203,58 @@ function setPartFlag_(user, request) {
       unavailable: unavailable,
       notInventoried: notInventoried,
       studyGuide: studyGuide,
+      changedBy: user.email
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function normalizePartImageRequest_(p) {
+  const partId = String(p.partId || '').trim().toUpperCase();
+  let imageUrl = String(p.imageUrl || '').trim();
+
+  if (!/^P-\d{6}$/.test(partId)) throw new Error('Invalid PartID.');
+
+  const imageFormula = imageUrl.match(/^=IMAGE\(\s*["'](.+?)["']\s*\)$/i);
+  if (imageFormula) imageUrl = String(imageFormula[1] || '').trim();
+
+  if (!/^https?:\/\/\S+$/i.test(imageUrl)) {
+    throw new Error('Paste a complete http:// or https:// image link.');
+  }
+
+  return { partId: partId, imageUrl: imageUrl };
+}
+
+function setPartImageUrl_(user, request) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(CONFIG.PARTS_SHEET);
+    if (!sheet) throw new Error('PARTS sheet not found.');
+
+    const values = sheet.getDataRange().getValues();
+    if (!values.length) throw new Error('PARTS sheet is empty.');
+    const h = headerMap_(values[0]);
+    if (h.PartID === undefined || h.ImageURL === undefined) throw new Error('PARTS image columns are missing.');
+
+    let rowIndex = 0;
+    for (let r = 1; r < values.length; r++) {
+      if (String(values[r][h.PartID] || '').trim().toUpperCase() === request.partId) {
+        rowIndex = r + 1;
+        break;
+      }
+    }
+    if (!rowIndex) throw new Error('Part not found.');
+
+    sheet.getRange(rowIndex, h.ImageURL + 1).setValue(request.imageUrl);
+    SpreadsheetApp.flush();
+
+    return {
+      partId: request.partId,
+      imageUrl: request.imageUrl,
       changedBy: user.email
     };
   } finally {
