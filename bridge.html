@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Returning to Inventory</title>
+  <style>
+    body{margin:0;background:#f6f7f5;color:#17202a;font-family:Arial,sans-serif;padding:32px}
+    .card{max-width:560px;margin:60px auto;background:#fff;border-top:6px solid #0B1A2E;border-radius:10px;padding:24px;box-shadow:0 10px 30px rgba(11,26,46,.12)}
+    h1{color:#0B1A2E}a{display:inline-block;background:#0B1A2E;color:#fff;text-decoration:none;border-radius:7px;padding:11px 16px;font-weight:700}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1 id="title">Returning to Inventory…</h1>
+    <p id="message">Passing the authenticated result back to the inventory page.</p>
+    <p><a href="./">Open Inventory</a></p>
+  </div>
+  <script>
+    function decodeBalances(text){
+      const balances={};
+      if(!text)return balances;
+      text.split('|').forEach(entry=>{
+        if(!entry)return;
+        const [number,a,t,o,z]=entry.split(',');
+        const partId='P-'+String(Number(number)).padStart(6,'0');
+        balances[partId]={available:Number(a||0),storage:Number(t||0),checkedOut:Number(o||0),unclassified:Number(z||0),unresolved:[]};
+      });
+      return balances;
+    }
+
+    const p=new URLSearchParams(location.search);
+    const bridge=p.get('bridge')||'';
+    let payload=null;
+
+    if(bridge==='bootstrap'){
+      payload={
+        source:'robotics-inventory-backend',
+        type:'bootstrap',
+        ok:p.get('ok')==='1',
+        user:{
+          email:p.get('email')||'',
+          firstName:p.get('firstName')||'',
+          lastName:p.get('lastName')||'',
+          role:p.get('role')||''
+        },
+        balances:decodeBalances(p.get('balances')||'')
+      };
+    }else if(bridge==='inventory-updated'){
+      payload={
+        source:'robotics-inventory-backend',
+        type:'inventory-updated',
+        ok:p.get('ok')==='1',
+        partId:p.get('partId')||'',
+        balances:{
+          available:Number(p.get('available')||0),
+          storage:Number(p.get('storage')||0),
+          checkedOut:Number(p.get('checkedOut')||0),
+          unclassified:Number(p.get('unclassified')||0),
+          unresolved:[]
+        },
+        transactionId:p.get('transactionId')||''
+      };
+    }else if(bridge==='inventory-error'){
+      payload={source:'robotics-inventory-backend',type:'inventory-error',ok:false,message:p.get('message')||'Inventory update failed.'};
+    }
+
+    if(payload&&window.opener&&!window.opener.closed){
+      window.opener.postMessage(payload,location.origin);
+      document.getElementById('title').textContent=payload.ok===false?'Inventory error':'Connected';
+      document.getElementById('message').textContent=payload.ok===false?(payload.message||'The operation failed.'):'The inventory page has been updated. This window should close automatically.';
+      setTimeout(()=>window.close(),350);
+    }else if(payload){
+      document.getElementById('title').textContent=payload.ok===false?'Inventory error':'Connection complete';
+      document.getElementById('message').textContent='The original inventory tab is no longer available. Click Open Inventory to continue.';
+    }else{
+      document.getElementById('title').textContent='Nothing to return';
+      document.getElementById('message').textContent='Open the inventory page to continue.';
+    }
+  </script>
+</body>
+</html>
