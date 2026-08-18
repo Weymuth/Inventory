@@ -19,6 +19,7 @@ window.INVENTORY_DATA=(window.INVENTORY_DATA||[]).concat([
 // survives refresh immediately, while Apps Script remains authoritative.
 window.addEventListener('load',function(){
   let activeFlagPopup=null;
+  const pendingStudyGuide={};
 
   function closeFlagPopup(){
     if(!activeFlagPopup)return;
@@ -46,6 +47,94 @@ window.addEventListener('load',function(){
     };
   }
 
+  function isStudyGuide(x){return !!(x&&(x.sg===true||x.sg===1));}
+
+  function saveStudyGuide(x){
+    if(!x)return;
+    try{
+      const all=JSON.parse(localStorage.getItem('roboticsInventoryStudyGuide')||'{}');
+      all[x.i]=isStudyGuide(x);
+      localStorage.setItem('roboticsInventoryStudyGuide',JSON.stringify(all));
+    }catch(e){}
+  }
+
+  function loadStudyGuide(){
+    try{
+      const all=JSON.parse(localStorage.getItem('roboticsInventoryStudyGuide')||'{}');
+      (window.INVENTORY_DATA||[]).forEach(function(x){
+        if(Object.prototype.hasOwnProperty.call(all,x.i))x.sg=all[x.i]?1:0;
+        else if(x.sg!==1&&x.sg!==true)x.sg=0;
+      });
+    }catch(e){
+      (window.INVENTORY_DATA||[]).forEach(function(x){if(x.sg!==1&&x.sg!==true)x.sg=0;});
+    }
+  }
+
+  function ensureStudyGuideAssets(){
+    if(!document.getElementById('bootstrap-icons-css')){
+      const link=document.createElement('link');
+      link.id='bootstrap-icons-css';
+      link.rel='stylesheet';
+      link.href='https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css';
+      document.head.appendChild(link);
+    }
+    if(!document.getElementById('study-guide-book-css')){
+      const style=document.createElement('style');
+      style.id='study-guide-book-css';
+      style.textContent='.card .body{position:relative;padding-right:42px}.study-book{position:absolute;top:8px;right:9px;width:30px;height:30px;border:0;background:transparent;padding:0;display:flex;align-items:center;justify-content:center;color:#b42318;font-size:22px;cursor:pointer;border-radius:6px;transition:transform .12s ease,color .12s ease,background .12s ease}.study-book:hover{background:#f5f6f4;transform:scale(1.08)}.study-book.in-guide{color:#1f7a46}.study-book:focus-visible{outline:2px solid #0B1A2E;outline-offset:2px}';
+      document.head.appendChild(style);
+    }
+  }
+
+  function decorateStudyBooks(){
+    ensureStudyGuideAssets();
+    document.querySelectorAll('.card').forEach(function(card){
+      const body=card.querySelector('.body');
+      if(!body||body.querySelector('.study-book'))return;
+      const raw=card.getAttribute('onclick')||'';
+      const match=raw.match(/P-\d{6}/);
+      if(!match)return;
+      const partId=match[0];
+      const x=(window.INVENTORY_DATA||[]).find(function(item){return item.i===partId;});
+      if(!x)return;
+      const enabled=isStudyGuide(x);
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='study-book'+(enabled?' in-guide':'');
+      button.setAttribute('aria-pressed',enabled?'true':'false');
+      button.setAttribute('aria-label',enabled?'Remove from Study Guide':'Add to Study Guide');
+      button.title=enabled?'Included in Study Guide — click to remove':'Not in Study Guide — click to add';
+      button.innerHTML='<i class="bi bi-book-fill" aria-hidden="true"></i>';
+      button.addEventListener('click',function(event){
+        event.stopPropagation();
+        window.setStudyGuide(partId,!isStudyGuide(x),event);
+      });
+      body.appendChild(button);
+    });
+  }
+
+  window.setStudyGuide=function(partId,enabled,event){
+    if(event)event.stopPropagation();
+    const x=(window.INVENTORY_DATA||[]).find(function(item){return item.i===partId;});
+    if(!x)return;
+    const oldValue=isStudyGuide(x);
+    const u=new URL(window.BACKEND_URL||'https://script.google.com/a/macros/mercersburg.edu/s/AKfycbx61H9IramNQWFX4GeEJlRpI0S8_tOMWrqLT9jiv10HQv_xqaztYte4ycnWiPrSbuzMFQ/exec');
+    u.searchParams.set('action','partflag');
+    u.searchParams.set('partId',partId);
+    u.searchParams.set('flag','STUDY_GUIDE');
+    u.searchParams.set('enabled',enabled?'1':'0');
+    const popup=window.open(u.toString(),'partFlagAction','popup,width=430,height=260,resizable=yes,scrollbars=yes');
+    if(!popup){
+      if(typeof window.showToast==='function')window.showToast('Popup blocked. Allow popups for this site to save Study Guide selections.');
+      return;
+    }
+    activeFlagPopup=popup;
+    pendingStudyGuide[partId]=oldValue;
+    x.sg=enabled?1:0;
+    saveStudyGuide(x);
+    if(typeof window.render==='function')window.render();
+  };
+
   function applyBridgePayload(data){
     if(!data||data.source!=='robotics-inventory-backend')return;
     if(data.type==='part-flag-updated'&&data.ok){
@@ -55,11 +144,23 @@ window.addEventListener('load',function(){
         window.setLocalFlag(x,'UNAVAILABLE',!!data.flags.unavailable);
         window.setLocalFlag(x,'NOT_INVENTORIED',!!data.flags.notInventoried);
         window.saveLocalFlags(x);
-        if(typeof window.render==='function')window.render();
-        if(window.selectedItem&&window.selectedItem.i===data.partId&&typeof window.refreshDetail==='function')window.refreshDetail();
       }
+      if(x&&data.flags&&Object.prototype.hasOwnProperty.call(data.flags,'studyGuide')){
+        x.sg=data.flags.studyGuide?1:0;
+        saveStudyGuide(x);
+        delete pendingStudyGuide[data.partId];
+      }
+      if(typeof window.render==='function')window.render();
+      if(window.selectedItem&&window.selectedItem.i===data.partId&&typeof window.refreshDetail==='function')window.refreshDetail();
       closeFlagPopup();
     }else if(data.type==='part-flag-error'){
+      const flag=String(data.flag||'').toUpperCase().replace(/-/g,'_');
+      if(flag==='STUDY_GUIDE'&&Object.prototype.hasOwnProperty.call(pendingStudyGuide,data.partId)){
+        const x=(window.INVENTORY_DATA||[]).find(function(item){return item.i===data.partId;});
+        if(x){x.sg=pendingStudyGuide[data.partId]?1:0;saveStudyGuide(x);}
+        delete pendingStudyGuide[data.partId];
+        if(typeof window.render==='function')window.render();
+      }
       closeFlagPopup();
     }
   }
@@ -73,4 +174,15 @@ window.addEventListener('load',function(){
     const channel=new BroadcastChannel('robotics-inventory');
     channel.onmessage=function(e){applyBridgePayload(e.data||null);};
   }catch(err){}
+
+  loadStudyGuide();
+  if(typeof window.render==='function'){
+    const originalRender=window.render;
+    window.render=function(){
+      const result=originalRender.apply(this,arguments);
+      decorateStudyBooks();
+      return result;
+    };
+  }
+  decorateStudyBooks();
 });
