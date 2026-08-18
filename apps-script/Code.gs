@@ -129,6 +129,9 @@ function verifyNonce_(email, request, nonce) {
 
 function confirmationPage_(user, request, nonce, available) {
   const title = request.fromState === 'UNCLASSIFIED' ? 'Classify inventory' : 'Move inventory';
+  const postUrl = ScriptApp.getService().getUrl();
+  if (!postUrl) throw new Error('Web app deployment URL is unavailable.');
+
   const body = `
     <div class="card">
       <div class="eyebrow">Robotics Inventory</div>
@@ -142,7 +145,7 @@ function confirmationPage_(user, request, nonce, available) {
         <dt>Current source quantity</dt><dd>${available}</dd>
       </dl>
       <p class="note">This first migration step changes inventory state only. Physical room/cabinet/bin assignment will be added next.</p>
-      <form method="post">
+      <form method="post" action="${escapeAttr_(postUrl)}" target="_top">
         <input type="hidden" name="partId" value="${escapeAttr_(request.partId)}">
         <input type="hidden" name="fromState" value="${escapeAttr_(request.fromState)}">
         <input type="hidden" name="toState" value="${escapeAttr_(request.toState)}">
