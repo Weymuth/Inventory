@@ -1,6 +1,7 @@
 const CONFIG = Object.freeze({
   SPREADSHEET_ID: '1qgV-9SOsLiF6lWj1-Ah2jCujwF7Dk_TSoA8X4nu92h0',
   FRONTEND_ORIGIN: 'https://weymuth.github.io',
+  FRONTEND_URL: 'https://weymuth.github.io/Inventory/',
   USERS_SHEET: 'USERS',
   INVENTORY_SHEET: 'INVENTORY',
   TRANSACTIONS_SHEET: 'TRANSACTIONS',
@@ -18,13 +19,16 @@ function doGet(e) {
 
     if (action === 'bootstrap') {
       const user = requireInventoryUser_();
-      return postMessageAndClose_({
-        source: 'robotics-inventory-backend',
-        type: 'bootstrap',
-        ok: true,
-        user: publicUser_(user),
-        balances: getAllBalances_()
+      const returnUrl = buildFrontendUrl_({
+        bridge: 'bootstrap',
+        ok: '1',
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        balances: compactBalances_(getAllBalances_())
       });
+      return returnPage_('Connected', 'Authentication succeeded. Return to the inventory page to finish connecting.', returnUrl);
     }
 
     if (action === 'move') {
@@ -52,22 +56,29 @@ function doPost(e) {
     const request = normalizeMoveRequest_(e.parameter);
     verifyNonce_(user.email, request, String(e.parameter.nonce || ''));
     const result = moveInventoryState_(user, request);
-
-    return postMessageAndClose_({
-      source: 'robotics-inventory-backend',
-      type: 'inventory-updated',
-      ok: true,
+    const b = result.balances;
+    const returnUrl = buildFrontendUrl_({
+      bridge: 'inventory-updated',
+      ok: '1',
       partId: request.partId,
-      balances: result.balances,
-      transactionId: result.transactionId
+      available: Number(b.available || 0),
+      storage: Number(b.storage || 0),
+      checkedOut: Number(b.checkedOut || 0),
+      unclassified: Number(b.unclassified || 0),
+      transactionId: result.transactionId,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role
     });
+    return returnPage_('Inventory updated', 'The change was recorded successfully.', returnUrl);
   } catch (err) {
-    return postMessageAndClose_({
-      source: 'robotics-inventory-backend',
-      type: 'inventory-error',
-      ok: false,
+    const returnUrl = buildFrontendUrl_({
+      bridge: 'inventory-error',
+      ok: '0',
       message: safeError_(err)
     });
+    return returnPage_('Inventory error', safeError_(err), returnUrl);
   }
 }
 
@@ -143,18 +154,34 @@ function confirmationPage_(user, request, nonce, available) {
   return page_(title, body);
 }
 
-function postMessageAndClose_(payload) {
-  const json = JSON.stringify(payload).replace(/</g, '\\u003c');
+function returnPage_(title, message, returnUrl) {
   const body = `
-    <div class="card"><h1>${payload.ok ? 'Done' : 'Inventory error'}</h1>
-      <p>${payload.ok ? 'The inventory website will update automatically.' : escapeHtml_(payload.message || 'Unknown error')}</p>
-    </div>
-    <script>
-      const payload = ${json};
-      if (window.opener) window.opener.postMessage(payload, '${CONFIG.FRONTEND_ORIGIN}');
-      setTimeout(() => window.close(), 700);
-    </script>`;
-  return page_(payload.ok ? 'Inventory updated' : 'Inventory error', body);
+    <div class="card">
+      <div class="eyebrow">Robotics Inventory</div>
+      <h1>${escapeHtml_(title)}</h1>
+      <p>${escapeHtml_(message)}</p>
+      <p><a class="return-button" href="${escapeAttr_(returnUrl)}" target="_top">Return to Inventory</a></p>
+      <p class="note">Google Apps Script runs inside a security sandbox, so this return button completes the handoff back to the inventory site.</p>
+    </div>`;
+  return page_(title, body);
+}
+
+function compactBalances_(balances) {
+  return Object.keys(balances).sort().map(partId => {
+    const b = balances[partId] || {};
+    const number = Number(String(partId).replace(/^P-/, ''));
+    return [number, Number(b.available || 0), Number(b.storage || 0), Number(b.checkedOut || 0), Number(b.unclassified || 0)].join(',');
+  }).join('|');
+}
+
+function buildFrontendUrl_(params) {
+  const pairs = [];
+  Object.keys(params).forEach(key => {
+    const value = params[key];
+    if (value === undefined || value === null || value === '') return;
+    pairs.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+  });
+  return CONFIG.FRONTEND_URL + (pairs.length ? '?' + pairs.join('&') : '');
 }
 
 function simplePage_(title, message) {
@@ -162,7 +189,7 @@ function simplePage_(title, message) {
 }
 
 function page_(title, body) {
-  return HtmlService.createHtmlOutput(`<!doctype html><html><head><base target="_top"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml_(title)}</title><style>body{font-family:Arial,sans-serif;background:#f5f6f4;color:#17202a;margin:0;padding:28px}.card{max-width:620px;margin:auto;background:#fff;border-top:6px solid #0B1A2E;border-radius:10px;padding:24px;box-shadow:0 10px 30px rgba(11,26,46,.12)}.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#7B6240;font-weight:700}h1{color:#0B1A2E;margin:6px 0 18px}dl{display:grid;grid-template-columns:180px 1fr;gap:8px 14px}dt{font-weight:700;color:#3D5266}dd{margin:0}.note{background:#F5F2E9;padding:12px;border-left:4px solid #C9A463}button{background:#0B1A2E;color:#fff;border:0;border-radius:7px;padding:11px 16px;font-weight:700;cursor:pointer}</style></head><body>${body}</body></html>`);
+  return HtmlService.createHtmlOutput(`<!doctype html><html><head><base target="_top"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml_(title)}</title><style>body{font-family:Arial,sans-serif;background:#f5f6f4;color:#17202a;margin:0;padding:28px}.card{max-width:620px;margin:auto;background:#fff;border-top:6px solid #0B1A2E;border-radius:10px;padding:24px;box-shadow:0 10px 30px rgba(11,26,46,.12)}.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#7B6240;font-weight:700}h1{color:#0B1A2E;margin:6px 0 18px}dl{display:grid;grid-template-columns:180px 1fr;gap:8px 14px}dt{font-weight:700;color:#3D5266}dd{margin:0}.note{background:#F5F2E9;padding:12px;border-left:4px solid #C9A463}.return-button,button{display:inline-block;background:#0B1A2E;color:#fff;border:0;border-radius:7px;padding:11px 16px;font-weight:700;cursor:pointer;text-decoration:none}</style></head><body>${body}</body></html>`);
 }
 
 function safeError_(err) {
