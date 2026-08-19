@@ -8,7 +8,7 @@
 
   const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const key=(requestId,partId)=>requestId+'|'+partId;
-  const isSubmittedItem=item=>String(item&&item.status||'SUBMITTED').toUpperCase()==='SUBMITTED';
+  const isSubmittedItem=item=>!!item&&(item.approvedQty===''||item.approvedQty==null);
 
   function installStyles(){
     if(document.getElementById('request-decision-css'))return;
@@ -60,7 +60,7 @@
         const item=(request.items||[])[index];if(!item)return;
         const td=document.createElement('td');td.className='rq-decision-cell';row.appendChild(td);
         if(!isSubmittedItem(item)){
-          td.innerHTML='<span class="rq-final-item">'+esc(String(item.status||'DECIDED').replace(/_/g,' '))+'</span>';
+          td.innerHTML='<span class="rq-final-item">'+(Number(item.approvedQty)>0?'APPROVED':'DECLINED')+'</span>';
           return;
         }
         const requested=Math.max(1,Number(item.requestedQty||1));
