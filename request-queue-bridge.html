@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Returning Request Queue</title>
+  <style>body{margin:0;background:#f6f7f5;color:#17202a;font-family:Arial,sans-serif;padding:32px}.card{max-width:560px;margin:60px auto;background:#fff;border-top:6px solid #0B1A2E;border-radius:10px;padding:24px;box-shadow:0 10px 30px rgba(11,26,46,.12)}h1{color:#0B1A2E}</style>
+</head>
+<body>
+  <div class="card"><h1 id="title">Returning request queue…</h1><p id="message">Passing the live queue back to the inventory page.</p></div>
+  <script>
+    let payload=null;
+    try{payload=JSON.parse(window.name||'null');}catch(e){}
+    try{window.name='';}catch(e){}
+
+    if(!payload||payload.source!=='robotics-inventory-backend'||!/^request-queue(?:-error)?$/.test(payload.type||'')){
+      payload={source:'robotics-inventory-backend',type:'request-queue-error',ok:false,requests:[],message:'The request queue response could not be read.'};
+    }
+
+    const envelope={id:Date.now()+'-'+Math.random().toString(36).slice(2),payload:payload};
+    try{localStorage.setItem('roboticsInventoryQueueBridgeEvent',JSON.stringify(envelope));}catch(e){}
+    try{const channel=new BroadcastChannel('robotics-inventory');channel.postMessage(payload);channel.close();}catch(e){}
+    try{if(window.opener&&!window.opener.closed)window.opener.postMessage(payload,location.origin);}catch(e){}
+
+    document.getElementById('title').textContent=payload.ok===false?'Request queue error':'Request queue loaded';
+    document.getElementById('message').textContent=payload.ok===false?(payload.message||'The queue could not be loaded.'):'Returning to the inventory page.';
+    setTimeout(function(){try{window.close();}catch(e){}},250);
+  </script>
+</body>
+</html>
