@@ -4,6 +4,7 @@
   const REQUEST_BACKEND='https://script.google.com/a/macros/mercersburg.edu/s/AKfycbwO-eAB-qrabGBpqbTpLWAkSUQUITiJQ3KPLIZEwjCJBN-wb8yyTgInNT-bXRbPinTA/exec';
   let queuePopup=null;
   let requests=[];
+  let loadTimer=null;
 
   const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const statusClass=s=>'rq-'+String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-');
@@ -41,11 +42,17 @@
   function closeQueue(){const m=document.getElementById('requestQueueModal');if(m)m.classList.remove('open');document.body.style.overflow='';}
 
   function loadQueue(){
+    clearTimeout(loadTimer);
     const body=document.getElementById('requestQueueBody');if(body)body.innerHTML='<div class="rq-loading">Loading live requests…</div>';
-    const target='staffRequestQueue';queuePopup=window.open('',target,'popup,width=500,height=360,resizable=yes,scrollbars=yes');
+    const target='staffRequestQueue_'+Date.now();
+    queuePopup=window.open('',target,'popup,width=500,height=360,resizable=yes,scrollbars=yes');
     if(!queuePopup){if(body)body.innerHTML='<div class="rq-error">Popup blocked. Allow popups for this site, then click Refresh.</div>';return;}
     const form=document.createElement('form');form.method='POST';form.action=REQUEST_BACKEND;form.target=target;form.style.display='none';
     const input=document.createElement('input');input.type='hidden';input.name='action';input.value='requestqueue';form.appendChild(input);document.body.appendChild(form);form.submit();form.remove();
+    loadTimer=setTimeout(()=>{
+      const current=document.getElementById('requestQueueBody');
+      if(current&&/Loading live requests/.test(current.textContent||''))current.innerHTML='<div class="rq-error">The queue response did not return. Close any request popup, then click Refresh.</div>';
+    },12000);
   }
 
   function fmtDate(ms){
@@ -70,16 +77,21 @@
     }).join('')+'<div class="rq-staff-note">Read-only queue for this step. Approval, denial, and fulfillment controls come next.</div>';
   }
 
-  function handleMessage(e){
-    const d=e.data||{};if(d.source!=='robotics-inventory-backend')return;
-    if(queuePopup&&e.source!==queuePopup)return;
+  function handlePayload(d){
+    if(!d||d.source!=='robotics-inventory-backend')return;
+    if(d.type!=='request-queue'&&d.type!=='request-queue-error')return;
+    clearTimeout(loadTimer);
+    try{if(queuePopup&&!queuePopup.closed)queuePopup.close();}catch(e){}
+    queuePopup=null;
     if(d.type==='request-queue'&&d.ok){requests=Array.isArray(d.requests)?d.requests:[];renderQueue();}
-    else if(d.type==='request-queue-error'){
+    else{
       const body=document.getElementById('requestQueueBody');if(body)body.innerHTML='<div class="rq-error">'+esc(d.message||'The request queue could not be loaded.')+'</div>';
     }
   }
 
-  window.addEventListener('message',handleMessage);
+  window.addEventListener('message',e=>{if(e.origin===location.origin)handlePayload(e.data||null);});
+  window.addEventListener('storage',e=>{if(e.key!=='roboticsInventoryQueueBridgeEvent'||!e.newValue)return;try{handlePayload(JSON.parse(e.newValue).payload||null);}catch(err){}});
+  try{const channel=new BroadcastChannel('robotics-inventory');channel.onmessage=e=>handlePayload(e.data||null);}catch(e){}
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeQueue();});
   window.addEventListener('load',installUi);
 })();
