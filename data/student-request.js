@@ -83,10 +83,14 @@
 
   function ensureSubmit(){
     const head=document.querySelector('#draft .draft-head');if(!head)return;
-    if(head.querySelector('.request-actions'))return;
-    const actions=document.createElement('div');actions.className='request-actions';
-    const clear=head.querySelector('button');if(clear){head.removeChild(clear);actions.appendChild(clear);}
-    const submit=document.createElement('button');submit.id='requestSubmitBtn';submit.className='btn';submit.type='button';submit.textContent='Submit Request';submit.onclick=submitRequest;actions.appendChild(submit);head.appendChild(actions);
+    let actions=head.querySelector('.request-actions');
+    if(!actions){
+      actions=document.createElement('div');actions.className='request-actions';
+      const clear=head.querySelector('button');if(clear){head.removeChild(clear);actions.appendChild(clear);}
+      head.appendChild(actions);
+    }
+    let submit=$('requestSubmitBtn');
+    if(!submit){submit=document.createElement('button');submit.id='requestSubmitBtn';submit.className='btn';submit.type='button';submit.textContent='Submit Request';submit.onclick=submitRequest;actions.appendChild(submit);}
   }
 
   function renderDraft(){
@@ -95,20 +99,29 @@
     box.classList.add('open');
     if($('draftTitle'))$('draftTitle').textContent='Draft '+requestDraft[0].p+' Request · '+requestDraft.length+' item'+(requestDraft.length===1?'':'s');
     list.innerHTML=requestDraft.map(x=>'<div class="request-line"><div class="request-part">'+esc(x.n)+'</div><input class="request-qty" type="number" min="1" max="999" step="1" value="'+x.q+'" onchange="updateRequestQty(\''+esc(x.i)+'\',this.value)"><button class="request-remove" type="button" onclick="removeRequestItem(\''+esc(x.i)+'\')">Remove</button></div>').join('');
-    ensureSubmit();const submit=$('requestSubmitBtn');if(submit){submit.disabled=submitting;submit.textContent=submitting?'Submitting…':'Submit Request';}
+    ensureSubmit();
+    const submit=$('requestSubmitBtn');if(submit){submit.disabled=submitting;submit.textContent=submitting?'Submitting…':'Submit Request';}
     renderGrid();
   }
 
-  window.addDraft=function(partId){
+  function addRequestPart(partId){
     applyTemporaryVexBaseline();
     const x=data().find(i=>i.i===partId);if(!x||!active(x)||retired(x)||unavailable(x)||notInventoried(x))return;
     if(requestDraft.length&&requestDraft[0].p!==x.p){alert('One request can contain only one program.');return;}
     if(requestDraft.some(i=>i.i===partId))return;
     requestDraft.push({i:x.i,n:x.n,p:x.p,q:1});clearStatus();renderDraft();
-  };
-  window.clearDraft=function(){if(submitting)return;requestDraft=[];clearStatus();renderDraft();};
-  window.updateRequestQty=function(partId,value){const x=requestDraft.find(i=>i.i===partId);if(!x)return;let q=Math.floor(Number(value));if(!Number.isFinite(q)||q<1)q=1;if(q>999)q=999;x.q=q;renderDraft();};
-  window.removeRequestItem=function(partId){if(submitting)return;requestDraft=requestDraft.filter(i=>i.i!==partId);renderDraft();};
+  }
+  function clearRequestDraft(){if(submitting)return;requestDraft=[];clearStatus();renderDraft();}
+  function updateRequestQty(partId,value){const x=requestDraft.find(i=>i.i===partId);if(!x)return;let q=Math.floor(Number(value));if(!Number.isFinite(q)||q<1)q=1;if(q>999)q=999;x.q=q;renderDraft();}
+  function removeRequestItem(partId){if(submitting)return;requestDraft=requestDraft.filter(i=>i.i!==partId);renderDraft();}
+
+  function installRequestGlobals(){
+    window.addDraft=addRequestPart;
+    window.clearDraft=clearRequestDraft;
+    window.updateRequestQty=updateRequestQty;
+    window.removeRequestItem=removeRequestItem;
+  }
+  installRequestGlobals();
 
   function hidden(form,name,value){const i=document.createElement('input');i.type='hidden';i.name=name;i.value=value;form.appendChild(i);}
   function submitRequest(){
@@ -125,7 +138,7 @@
   function handleBridge(payload){
     if(!payload||payload.source!=='robotics-inventory-backend')return;
     if(payload.type==='bootstrap'&&payload.ok){
-      setTimeout(()=>{applyTemporaryVexBaseline();renderDraft();renderGrid();},0);
+      setTimeout(()=>{applyTemporaryVexBaseline();installRequestGlobals();renderDraft();renderGrid();},0);
     }else if(payload.type==='request-submitted'&&payload.ok){
       submitting=false;requestDraft=[];renderDraft();showStatus('Request submitted · '+payload.requestId,false);
     }else if(payload.type==='request-error'){
@@ -135,11 +148,27 @@
 
   window.addEventListener('load',function(){
     applyTemporaryVexBaseline();
+    installRequestGlobals();
     installStyles();updateWording();statusBox();
+
     const originalOpen=window.openWorkspace;
-    if(typeof originalOpen==='function')window.openWorkspace=function(nextMode){applyTemporaryVexBaseline();originalOpen(nextMode);updateWording();setTimeout(()=>{renderDraft();renderGrid();},0);};
+    if(typeof originalOpen==='function')window.openWorkspace=function(nextMode){
+      installRequestGlobals();applyTemporaryVexBaseline();originalOpen(nextMode);updateWording();
+      setTimeout(()=>{installRequestGlobals();renderDraft();renderGrid();},0);
+    };
 
     document.addEventListener('click',function(e){
+      const add=e.target.closest&&e.target.closest('.add');
+      if(add&&mode()==='request'){
+        const m=String(add.getAttribute('onclick')||'').match(/addDraft\(['"]([^'"]+)['"]\)/);
+        if(m){e.preventDefault();e.stopImmediatePropagation();addRequestPart(m[1]);return;}
+      }
+
+      const clear=e.target.closest&&e.target.closest('#draft .draft-head .btn.light');
+      if(clear&&mode()==='request'){
+        e.preventDefault();e.stopImmediatePropagation();clearRequestDraft();return;
+      }
+
       const b=e.target.closest&&e.target.closest('.pill[data-program]');if(!b||!requestDraft.length)return;
       if(b.dataset.program===requestDraft[0].p)return;
       if(!confirm('Clear the current request and switch programs?')){e.preventDefault();e.stopImmediatePropagation();return;}
@@ -147,7 +176,7 @@
     },true);
 
     const search=$('studentSearch');if(search)search.addEventListener('input',()=>setTimeout(renderGrid,0));
-    document.querySelectorAll('.pill[data-program]').forEach(b=>b.addEventListener('click',()=>setTimeout(()=>{renderDraft();renderGrid();},0)));
+    document.querySelectorAll('.pill[data-program]').forEach(b=>b.addEventListener('click',()=>setTimeout(()=>{installRequestGlobals();renderDraft();renderGrid();},0)));
     window.addEventListener('message',e=>{if(e.origin===location.origin)handleBridge(e.data||null);});
     window.addEventListener('storage',e=>{if(e.key!=='roboticsInventoryBridgeEvent'||!e.newValue)return;try{handleBridge(JSON.parse(e.newValue).payload||null);}catch(err){}});
     try{const channel=new BroadcastChannel('robotics-inventory');channel.onmessage=e=>handleBridge(e.data||null);}catch(e){}
