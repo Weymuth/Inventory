@@ -13,9 +13,14 @@ function doPost(e){
       const user=requireTeacherOrAdmin_();
       return requestQueuePage_(true,user,loadRequestQueue_(),'');
     }
+    if(action==='requestdecision'){
+      const user=requireTeacherOrAdmin_();
+      const result=decideRequest_(user,p);
+      return requestQueuePage_(true,user,loadRequestQueue_(),result.message);
+    }
     throw new Error('Unknown backend action.');
   }catch(err){
-    if(action==='requestqueue')return requestQueuePage_(false,null,[],safeError_(err));
+    if(action==='requestqueue'||action==='requestdecision')return requestQueuePage_(false,null,[],safeError_(err));
     return requestReturnPage_(false,'',safeError_(err));
   }
 }
@@ -107,6 +112,85 @@ function submitPartsRequest_(user,p){
     requests.getRange(startRow,1,rows.length,requestHeaders.length).setValues(rows);
     SpreadsheetApp.flush();
     return{requestId:requestId,itemCount:rows.length};
+  }finally{
+    lock.releaseLock();
+  }
+}
+
+function decideRequest_(user,p){
+  const requestId=String(p.requestId||'').trim().toUpperCase();
+  const decision=String(p.decision||'').trim().toUpperCase();
+  if(!/^REQ-[A-Z0-9-]+$/.test(requestId))throw new Error('The RequestID is invalid.');
+  if(!['APPROVE','DENY'].includes(decision))throw new Error('Choose Approve or Deny.');
+
+  let rawApprovals=[];
+  if(decision==='APPROVE'){
+    try{rawApprovals=JSON.parse(String(p.approvals||'[]'));}
+    catch(e){throw new Error('The approved quantity list is invalid.');}
+    if(!Array.isArray(rawApprovals)||!rawApprovals.length)throw new Error('Enter an approved quantity for each requested part.');
+  }
+
+  const approvalMap={};
+  rawApprovals.forEach(item=>{
+    const partId=String(item&&item.partId||'').trim().toUpperCase();
+    const quantity=Number(item&&item.quantity);
+    if(!/^P-\d{6}$/.test(partId))throw new Error('One approved PartID is invalid.');
+    if(!Number.isInteger(quantity)||quantity<1||quantity>999)throw new Error('Approved quantities must be positive whole numbers.');
+    if(Object.prototype.hasOwnProperty.call(approvalMap,partId))throw new Error('The same part appears twice in the approval list.');
+    approvalMap[partId]=quantity;
+  });
+
+  const lock=LockService.getScriptLock();
+  lock.waitLock(30000);
+  try{
+    const ss=SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const requests=ss.getSheetByName(REQUESTS_SHEET_NAME);
+    if(!requests)throw new Error('REQUESTS sheet is missing.');
+    const values=requests.getDataRange().getValues();
+    if(values.length<2)throw new Error('No requests are available.');
+    const rh=headerMap_(values[0]);
+    ['RequestID','PartID','RequestedQty','Status','ApprovedQty','ApproverEmail','DecisionAt'].forEach(name=>{
+      if(rh[name]===undefined)throw new Error('REQUESTS '+name+' column is missing.');
+    });
+
+    const matches=[];
+    for(let r=1;r<values.length;r++){
+      if(String(values[r][rh.RequestID]||'').trim().toUpperCase()===requestId)matches.push(r);
+    }
+    if(!matches.length)throw new Error(requestId+' was not found.');
+
+    const expectedParts={};
+    matches.forEach(r=>{
+      const row=values[r];
+      const status=String(row[rh.Status]||'').trim().toUpperCase();
+      if(status!=='SUBMITTED')throw new Error(requestId+' has already been decided or fulfilled. Refresh the queue.');
+      const partId=String(row[rh.PartID]||'').trim().toUpperCase();
+      const requested=Number(row[rh.RequestedQty]||0);
+      expectedParts[partId]=true;
+      if(decision==='APPROVE'){
+        if(!Object.prototype.hasOwnProperty.call(approvalMap,partId))throw new Error('Approved quantity is missing for '+partId+'.');
+        const approved=approvalMap[partId];
+        if(approved>requested)throw new Error(partId+' requested '+requested+'; approval cannot exceed that quantity.');
+      }
+    });
+    if(decision==='APPROVE'){
+      Object.keys(approvalMap).forEach(partId=>{
+        if(!expectedParts[partId])throw new Error(partId+' is not part of '+requestId+'.');
+      });
+    }
+
+    const now=new Date();
+    matches.forEach(r=>{
+      const sheetRow=r+1;
+      const partId=String(values[r][rh.PartID]||'').trim().toUpperCase();
+      const approved=decision==='APPROVE'?approvalMap[partId]:0;
+      requests.getRange(sheetRow,rh.Status+1).setValue(decision==='APPROVE'?'APPROVED':'DENIED');
+      requests.getRange(sheetRow,rh.ApprovedQty+1).setValue(approved);
+      requests.getRange(sheetRow,rh.ApproverEmail+1).setValue(user.email);
+      requests.getRange(sheetRow,rh.DecisionAt+1).setValue(now);
+    });
+    SpreadsheetApp.flush();
+    return{requestId:requestId,status:decision==='APPROVE'?'APPROVED':'DENIED',message:'Request '+requestId+' '+(decision==='APPROVE'?'approved.':'denied.')};
   }finally{
     lock.releaseLock();
   }
