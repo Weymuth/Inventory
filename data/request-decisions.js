@@ -5,6 +5,7 @@
   let latestRequests=[];
   let staged={};
   let submitting=false;
+  let submitTimer=null;
 
   const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const key=(requestId,partId)=>requestId+'|'+partId;
@@ -106,6 +107,16 @@
     const n=document.createElement('div');n.id='rqDecisionMessage';n.className='rq-result '+(error?'error':'ok');n.textContent=text;body.insertBefore(n,body.firstChild);
   }
 
+  function resetSubmitting(message){
+    clearTimeout(submitTimer);submitTimer=null;submitting=false;
+    document.querySelectorAll('.rq-item-choice').forEach(el=>el.disabled=false);
+    document.querySelectorAll('.rq-card').forEach(card=>{
+      const idNode=card.querySelector('.rq-id');const requestId=idNode?String(idNode.textContent||'').trim():'';
+      card.querySelectorAll('.rq-items tbody tr').forEach((row,index)=>{const request=requestById(requestId);const item=request&&(request.items||[])[index];if(item&&isSubmittedItem(item))renderRowChoice(row,key(requestId,item.partId),item);});
+    });
+    if(message)showMessage(message,true);updateFooter();
+  }
+
   function submitDecisions(){
     if(submitting)return;
     const decisions=Object.values(staged);if(!decisions.length)return;
@@ -115,17 +126,18 @@
     const frame=document.createElement('iframe');frame.name=target;frame.style.display='none';frame.setAttribute('aria-hidden','true');document.body.appendChild(frame);
     const form=document.createElement('form');form.method='POST';form.action=BACKEND;form.target=target;form.style.display='none';
     [['action','requestdecisions'],['decisions',JSON.stringify(decisions)]].forEach(pair=>{const i=document.createElement('input');i.type='hidden';i.name=pair[0];i.value=pair[1];form.appendChild(i);});
-    document.body.appendChild(form);form.submit();form.remove();setTimeout(()=>{try{frame.remove();}catch(e){}},20000);
+    document.body.appendChild(form);form.submit();form.remove();
+    submitTimer=setTimeout(()=>{try{frame.remove();}catch(e){};if(submitting)resetSubmitting('No response came back from the decision backend. The decisions were not confirmed as saved.');},15000);
   }
 
   function trustedOrigin(origin){return origin===location.origin||/^https:\/\/(?:script\.google\.com|[^/]+\.googleusercontent\.com)$/.test(origin||'');}
 
   window.addEventListener('message',e=>{
     const d=e.data||{};if(!trustedOrigin(e.origin)||d.source!=='robotics-inventory-backend')return;
-    if(d.type!=='request-queue'&&d.type!=='request-queue-error')return;
+    if(d.type!=='request-queue'&&d.type!=='request-queue-error'&&d.type!=='request-error')return;
     if(submitting){
-      submitting=false;
-      if(d.type==='request-queue-error'||!d.ok){showMessage(d.message||'The decisions could not be saved.',true);updateFooter();setTimeout(augment,50);return;}
+      clearTimeout(submitTimer);submitTimer=null;submitting=false;
+      if(d.type==='request-queue-error'||d.type==='request-error'||!d.ok){showMessage(d.message||'The decisions could not be saved.',true);updateFooter();setTimeout(augment,50);return;}
       staged={};latestRequests=Array.isArray(d.requests)?d.requests:[];
       const refresh=document.getElementById('requestQueueRefresh');if(refresh)refresh.click();
       setTimeout(()=>showMessage(d.message||'Decisions saved.',false),250);return;
