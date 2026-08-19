@@ -195,9 +195,10 @@ function requestQueuePage_(ok,user,requests,message){
     user:user?{email:user.email,firstName:user.firstName,lastName:user.lastName,role:user.role}:null,
     message:String(message||'')
   };
-  const payloadJson=JSON.stringify(payload).replace(/</g,'\\u003c');
-  const targetOrigin=JSON.stringify(CONFIG.FRONTEND_ORIGIN).replace(/</g,'\\u003c');
-  return HtmlService.createHtmlOutput('<!doctype html><html><head><meta charset="utf-8"><title>Request Queue</title></head><body><p>Loading request queue…</p><script>const payload='+payloadJson+',targetOrigin='+targetOrigin+';function send(){try{if(window.opener&&!window.opener.closed)window.opener.postMessage(payload,targetOrigin);}catch(e){}try{if(window.top&&window.top.opener&&!window.top.opener.closed)window.top.opener.postMessage(payload,targetOrigin);}catch(e){}}send();setTimeout(function(){try{window.top.close();}catch(e){try{window.close();}catch(x){}}},300);</script></body></html>');
+  const payloadText=JSON.stringify(JSON.stringify(payload)).replace(/</g,'\\u003c');
+  const bridgeUrl=CONFIG.FRONTEND_ORIGIN+'/Inventory/request-queue-bridge.html?v=20260819-1412';
+  const target=JSON.stringify(bridgeUrl).replace(/</g,'\\u003c');
+  return HtmlService.createHtmlOutput('<!doctype html><html><head><meta charset="utf-8"><title>Request Queue</title></head><body><p>Loading request queue…</p><script>window.name='+payloadText+';window.location.replace('+target+');</script></body></html>');
 }
 
 function makeRequestId_(){
