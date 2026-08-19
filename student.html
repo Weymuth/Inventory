@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0B1A2E">
+  <title>Robotics Parts — Student</title>
+  <style>
+    :root{--navy:#0B1A2E;--slate:#3D5266;--bronze:#7B6240;--brass:#C9A463;--paper:#F5F2E9;--ink:#17202a;--muted:#68737d;--line:#d9ddda;--ok:#256b49;--danger:#9a342c;--shadow:0 10px 28px rgba(11,26,46,.09)}
+    *{box-sizing:border-box}body{margin:0;background:#f6f7f5;color:var(--ink);font-family:Inter,Arial,sans-serif}button,input{font:inherit}button{cursor:pointer}
+    header{background:var(--navy);color:white;border-bottom:5px solid var(--brass)}.head{max-width:1320px;margin:auto;padding:22px 26px;display:flex;justify-content:space-between;align-items:center;gap:18px}.eyebrow{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:#d8c69f;font-weight:850}.brand{font-size:28px;font-weight:900;margin-top:4px}.head-right{text-align:right;font-size:12px;color:#d5dbe0}.head-right strong{color:white}
+    main{max-width:1320px;margin:auto;padding:22px 26px 60px}.account{display:flex;align-items:center;justify-content:space-between;gap:14px;background:white;border:1px solid var(--line);border-radius:11px;padding:12px 14px;box-shadow:var(--shadow);margin-bottom:18px}.account-name{font-weight:850;color:var(--navy)}.account-sub{font-size:11px;color:var(--muted);margin-top:2px}.btn{border:0;border-radius:8px;background:var(--navy);color:white;font-weight:850;padding:9px 13px}.btn.secondary{background:var(--slate)}.btn.light{background:white;color:var(--navy);border:1px solid #cbd1d5}.btn:disabled{opacity:.45;cursor:not-allowed}
+    .welcome{background:linear-gradient(135deg,#fff,#f8f5eb);border:1px solid #ded6c1;border-left:5px solid var(--brass);border-radius:12px;padding:22px;margin-bottom:18px}.welcome h1{margin:0 0 7px;color:var(--navy);font-size:27px}.welcome p{margin:0;color:var(--muted);line-height:1.5}.preview-note{margin-top:10px;font-size:11px;color:var(--bronze);font-weight:800}
+    .choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.choice{background:white;border:1px solid #dfe2df;border-radius:14px;padding:22px;box-shadow:var(--shadow);text-align:left}.choice:hover{transform:translateY(-1px);box-shadow:0 14px 34px rgba(11,26,46,.12)}.choice-kicker{font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:900;color:var(--bronze)}.choice h2{margin:7px 0 8px;color:var(--navy)}.choice p{margin:0;color:var(--muted);line-height:1.45}.choice-arrow{margin-top:18px;color:var(--slate);font-weight:900}
+    .workspace{display:none}.workspace.open{display:block}.workhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px}.workhead h2{margin:0;color:var(--navy)}.toolbar{background:white;border:1px solid var(--line);border-radius:11px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:12px;margin-bottom:14px}.search{width:100%;border:1px solid #cbd1d5;border-radius:8px;padding:10px 12px}.programs{display:flex;gap:6px}.pill{border:1px solid #cbd1d5;background:white;color:var(--slate);border-radius:999px;padding:8px 12px;font-weight:850}.pill.active{background:var(--navy);border-color:var(--navy);color:white}.summary{display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:12px;color:var(--muted);margin:0 2px 9px}
+    .parts{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}.student-part{background:white;border:1px solid #dfe2df;border-radius:12px;overflow:hidden;display:grid;grid-template-columns:100px 1fr;min-height:142px;box-shadow:0 3px 12px rgba(11,26,46,.045)}.student-thumb{background:#f0f2ef;border-right:1px solid #e2e4e1;display:flex;align-items:center;justify-content:center;min-height:142px}.student-thumb img{width:100%;height:100%;max-height:142px;object-fit:contain;padding:8px;background:white}.student-thumb .missing{font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:850;color:#7c868e;text-align:center;padding:8px}.student-body{padding:12px}.program-tag{display:inline-block;font-size:8px;letter-spacing:.1em;text-transform:uppercase;font-weight:900;color:var(--bronze);margin-bottom:5px}.student-name{font-size:14px;line-height:1.2;font-weight:900;color:var(--navy)}.student-meta{font-size:10.5px;color:var(--muted);line-height:1.35;margin-top:4px}.student-row{display:flex;justify-content:space-between;align-items:end;gap:8px;margin-top:11px}.available{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800}.available b{display:block;font-size:20px;line-height:1;color:var(--navy);margin-bottom:2px}.available.zero b{color:var(--danger)}.add{border:0;background:var(--navy);color:white;border-radius:7px;padding:7px 9px;font-size:10px;font-weight:850}.add:disabled{background:#9ba4ab}.study-chip{display:inline-block;margin-top:10px;background:var(--paper);border:1px solid #ded6c1;color:var(--bronze);border-radius:999px;padding:4px 8px;font-size:9px;font-weight:850}.empty{grid-column:1/-1;background:white;border:1px dashed #cfd4d1;border-radius:10px;padding:30px;text-align:center;color:var(--muted)}
+    .draft{display:none;background:white;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}.draft.open{display:block}.draft-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.draft h3{margin:0;color:var(--navy)}.draft-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.draft-item{background:#f4f6f5;border:1px solid #dde1df;border-radius:999px;padding:5px 8px;font-size:10px}.draft-note{font-size:10.5px;color:var(--muted);margin-top:10px}.blocked{background:#fff4f2;border:1px solid #e7bbb7;color:#7f2d27;border-radius:10px;padding:14px;display:none;margin-bottom:16px}.blocked.open{display:block}
+    @media(max-width:760px){.choices{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr}.workhead{align-items:start}.account{align-items:start;flex-direction:column}.head{align-items:start;flex-direction:column}.head-right{text-align:left}.student-part{grid-template-columns:86px 1fr}.programs{flex-wrap:wrap}}
+  </style>
+</head>
+<body>
+<header><div class="head"><div><div class="eyebrow">Mercersburg Robotics</div><div class="brand">Student Parts Center</div></div><div class="head-right">Order what you need.<br><strong>Learn what you use.</strong></div></div></header>
+<main>
+  <div class="account"><div><div id="accountName" class="account-name">Mercersburg account not connected</div><div id="accountSub" class="account-sub">Connect to verify your inventory role and load current availability.</div></div><button id="connectBtn" class="btn" type="button">Connect Mercersburg Account</button></div>
+  <div id="blocked" class="blocked"></div>
+
+  <section id="home">
+    <div class="welcome"><h1 id="welcomeTitle">Robotics parts, without the inventory clutter.</h1><p>Students see only the information needed to request parts and study the hardware used in the program. Storage, migration, editing, and administrative controls stay out of this view.</p><div id="previewNote" class="preview-note"></div></div>
+    <div class="choices">
+      <button class="choice" type="button" onclick="openWorkspace('order')"><div class="choice-kicker">Build</div><h2>Order Parts</h2><p>Browse VEX or RoboCup parts, see what is currently available, and build a single-program request.</p><div class="choice-arrow">Choose parts →</div></button>
+      <button class="choice" type="button" onclick="openWorkspace('study')"><div class="choice-kicker">Review</div><h2>Study Guide</h2><p>Review the parts selected by your instructor without inventory-only controls or purchasing clutter.</p><div class="choice-arrow">Start reviewing →</div></button>
+    </div>
+  </section>
+
+  <section id="workspace" class="workspace">
+    <div class="workhead"><div><div id="modeKicker" class="eyebrow" style="color:#7B6240"></div><h2 id="modeTitle"></h2></div><button class="btn light" type="button" onclick="goHome()">← Student Home</button></div>
+    <div id="draft" class="draft"><div class="draft-head"><h3 id="draftTitle">Draft Order</h3><button class="btn light" type="button" onclick="clearDraft()">Clear</button></div><div id="draftList" class="draft-list"></div><div class="draft-note">This first student build creates the draft correctly. Submitting the request to the master system is the next backend step.</div></div>
+    <div class="toolbar"><input id="studentSearch" class="search" type="search" placeholder="Search part name, manufacturer, part number, category…"><div class="programs"><button class="pill active" data-program="VEX" type="button">VEX</button><button class="pill" data-program="RoboCup" type="button">RoboCup</button></div></div>
+    <div class="summary"><span id="resultCount"></span><span id="modeHint"></span></div>
+    <div id="parts" class="parts"></div>
+  </section>
+</main>
+<script>window.INVENTORY_DATA=[];</script>
+<script src="data/inventory-data-1.js"></script><script src="data/inventory-data-2.js"></script><script src="data/inventory-data-3.js"></script><script src="data/inventory-data-4.js"></script><script src="data/inventory-data-5.js"></script><script src="data/inventory-data-6-core.js?v=student-1"></script>
+<script>
+(function(){
+  const BACKEND='https://script.google.com/a/macros/mercersburg.edu/s/AKfycbwO-eAB-qrabGBpqbTpLWAkSUQUITiJQ3KPLIZEwjCJBN-wb8yyTgInNT-bXRbPinTA/exec';
+  const allowedRoles=['STUDENT','TEACHER','ADMIN'];
+  let user=null,mode='',program='VEX',draft=[];
+  const $=id=>document.getElementById(id);
+  const data=()=>window.INVENTORY_DATA||[];
+  const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  function bool(v){return v===true||v===1||String(v).toUpperCase()==='TRUE';}
+  function isRetired(x){return bool(x.ret)||String(x.s||'').toUpperCase()==='RETIRED';}
+  function isUnavailable(x){return bool(x.ua);}
+  function isNotInventoried(x){if(bool(x.ni))return true;if(x.ni===false||x.ni===0)return false;if(x.iv===0)return true;if(x.iv===1)return false;return x.p==='VEX'&&Number(x.a||0)+Number(x.t||0)+Number(x.o||0)+Number(x.z||0)===0&&!x.w;}
+  function isActive(x){return !(x&&(x.active===false||x.active===0));}
+  function isStudy(x){return bool(x.sg);}
+
+  function applyStoredMetadata(){
+    try{const all=JSON.parse(localStorage.getItem('roboticsInventoryNameOverrides')||'{}');data().forEach(x=>{if(all[x.i])x.n=all[x.i];});}catch(e){}
+    try{const all=JSON.parse(localStorage.getItem('roboticsInventoryImageOverrides')||'{}');data().forEach(x=>{if(all[x.i])x.g=all[x.i];});}catch(e){}
+    try{const all=JSON.parse(localStorage.getItem('roboticsInventoryStudyGuide')||'{}');data().forEach(x=>{if(Object.prototype.hasOwnProperty.call(all,x.i))x.sg=all[x.i]?1:0;});}catch(e){}
+    try{const all=JSON.parse(localStorage.getItem('roboticsInventoryActiveOverrides')||'{}');data().forEach(x=>{if(Object.prototype.hasOwnProperty.call(all,x.i))x.active=!!all[x.i];});}catch(e){}
+    try{const all=JSON.parse(localStorage.getItem('roboticsStudentBalances')||'{}');applyBalances(all);}catch(e){}
+  }
+
+  function applyBalances(balances){
+    if(!balances)return;
+    data().forEach(x=>{const b=balances[x.i];if(!b)return;x.a=Number(b.available||0);x.t=Number(b.storage||0);x.o=Number(b.checkedOut||0);x.z=Number(b.unclassified||0);});
+  }
+
+  function saveSession(payload){
+    try{localStorage.setItem('roboticsStudentUser',JSON.stringify(payload.user||{}));}catch(e){}
+    try{localStorage.setItem('roboticsStudentBalances',JSON.stringify(payload.balances||{}));}catch(e){}
+  }
+
+  function loadSession(){
+    try{const u=JSON.parse(localStorage.getItem('roboticsStudentUser')||'null');if(u&&u.email)user=u;}catch(e){}
+  }
+
+  function updateAccount(){
+    if(!user){$('accountName').textContent='Mercersburg account not connected';$('accountSub').textContent='Connect to verify your inventory role and load current availability.';$('connectBtn').textContent='Connect Mercersburg Account';$('blocked').classList.remove('open');$('previewNote').textContent='';return;}
+    const role=String(user.role||'').toUpperCase();
+    $('accountName').textContent=(user.firstName||'')+' '+(user.lastName||'');
+    $('accountSub').textContent=user.email+' · '+role;
+    $('connectBtn').textContent='Refresh Account & Availability';
+    if(!allowedRoles.includes(role)){$('blocked').textContent='This Mercersburg account is not authorized for the robotics inventory system.';$('blocked').classList.add('open');}else{$('blocked').classList.remove('open');}
+    $('previewNote').textContent=role==='STUDENT'?'Signed in as a student.':(role==='TEACHER'||role==='ADMIN')?'You are viewing the student experience in '+role+' preview mode.':'';
+    if(user.firstName)$('welcomeTitle').textContent='Hi '+user.firstName+'. What do you need today?';
+  }
+
+  function authorized(){return user&&allowedRoles.includes(String(user.role||'').toUpperCase());}
+  function connect(){const u=new URL(BACKEND);u.searchParams.set('action','bootstrap');const w=window.open(u.toString(),'inventoryBootstrap','popup,width=520,height=620,resizable=yes,scrollbars=yes');if(!w)alert('Allow popups for this site so Mercersburg authentication can open.');}
+
+  function handleBridge(payload){
+    if(!payload||payload.source!=='robotics-inventory-backend'||payload.type!=='bootstrap'||!payload.ok)return;
+    user=payload.user||null;applyBalances(payload.balances||{});saveSession(payload);updateAccount();if(mode)renderStudent();
+  }
+
+  window.addEventListener('message',e=>{if(e.origin!==location.origin)return;handleBridge(e.data||null);});
+  window.addEventListener('storage',e=>{if(e.key!=='roboticsInventoryBridgeEvent'||!e.newValue)return;try{const env=JSON.parse(e.newValue);handleBridge(env.payload||null);}catch(err){}});
+  try{const channel=new BroadcastChannel('robotics-inventory');channel.onmessage=e=>handleBridge(e.data||null);}catch(e){}
+
+  function setProgram(next){
+    if(draft.length&&mode==='order'&&draft[0].p!==next){if(!confirm('A student order cannot mix VEX and RoboCup parts. Clear the current draft and switch programs?'))return;draft=[];renderDraft();}
+    program=next;document.querySelectorAll('.pill').forEach(b=>b.classList.toggle('active',b.dataset.program===program));renderStudent();
+  }
+
+  function viewItems(){
+    const q=$('studentSearch').value.trim().toLowerCase();
+    return data().filter(x=>{
+      if(!isActive(x)||x.p!==program)return false;
+      if(mode==='order'&&(isRetired(x)||isUnavailable(x)||isNotInventoried(x)))return false;
+      if(mode==='study'&&!isStudy(x))return false;
+      return !q||[x.i,x.n,x.m,x.x,x.c,x.p].some(v=>String(v||'').toLowerCase().includes(q));
+    });
+  }
+
+  function renderStudent(){
+    if(!authorized()){$('parts').innerHTML='<div class="empty">Connect an authorized Mercersburg account to use the student tools.</div>';$('resultCount').textContent='';return;}
+    const rows=viewItems();$('resultCount').textContent=rows.length+' part'+(rows.length===1?'':'s');
+    $('parts').innerHTML=rows.length?rows.map(x=>{
+      const available=Number(x.a||0);const image=x.g?'<img src="'+esc(x.g)+'" alt="" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=&quot;missing&quot;>Image unavailable</div>\'">':'<div class="missing">No image</div>';
+      const right=mode==='order'?'<div class="student-row"><div class="available '+(available<=0?'zero':'')+'"><b>'+available+'</b>Available</div><button class="add" type="button" '+(available<=0?'disabled':'')+' onclick="addDraft(\''+esc(x.i)+'\')">'+(available<=0?'Out of stock':'Add')+'</button></div>':'<span class="study-chip">Instructor selected</span>';
+      return '<article class="student-part"><div class="student-thumb">'+image+'</div><div class="student-body"><div class="program-tag">'+esc(x.p)+'</div><div class="student-name">'+esc(x.n)+'</div><div class="student-meta">'+esc(x.m||'Manufacturer not listed')+(x.x?' · '+esc(x.x):'')+(x.c?'<br>'+esc(x.c):'')+'</div>'+right+'</div></article>';
+    }).join(''):'<div class="empty">'+(mode==='study'?'No Study Guide parts match this program and search.':'No orderable parts match this program and search.')+'</div>';
+  }
+
+  function renderDraft(){
+    const box=$('draft');if(mode!=='order'||!draft.length){box.classList.remove('open');$('draftList').innerHTML='';return;}box.classList.add('open');$('draftTitle').textContent='Draft '+draft[0].p+' Order · '+draft.length+' item'+(draft.length===1?'':'s');$('draftList').innerHTML=draft.map(x=>'<span class="draft-item">'+esc(x.n)+'</span>').join('');
+  }
+
+  window.addDraft=function(partId){const x=data().find(i=>i.i===partId);if(!x||Number(x.a||0)<=0)return;if(draft.length&&draft[0].p!==x.p){alert('One order can contain only one program.');return;}if(draft.some(i=>i.i===partId))return;draft.push({i:x.i,n:x.n,p:x.p});renderDraft();};
+  window.clearDraft=function(){draft=[];renderDraft();};
+  window.openWorkspace=function(nextMode){if(!authorized()){connect();return;}mode=nextMode;$('home').style.display='none';$('workspace').classList.add('open');$('modeKicker').textContent=mode==='order'?'Build':'Review';$('modeTitle').textContent=mode==='order'?'Order Parts':'Study Guide';$('modeHint').textContent=mode==='order'?'Only current, inventoried parts are orderable.':'Only instructor-selected Study Guide parts are shown.';$('studentSearch').value='';renderDraft();renderStudent();};
+  window.goHome=function(){mode='';$('workspace').classList.remove('open');$('home').style.display='block';};
+
+  $('connectBtn').addEventListener('click',connect);$('studentSearch').addEventListener('input',renderStudent);document.querySelectorAll('.pill').forEach(b=>b.addEventListener('click',()=>setProgram(b.dataset.program)));
+  loadSession();applyStoredMetadata();updateAccount();
+})();
+</script>
+</body>
+</html>
