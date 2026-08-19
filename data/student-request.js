@@ -16,9 +16,10 @@
   const notInventoried=x=>bool(x&&x.ni)||x&&x.iv===0;
   const study=x=>bool(x&&x.sg);
 
-  function isTemporaryVexPart(x){return !!(x&&x.p==='VEX'&&active(x)&&!retired(x)&&!unavailable(x));}
+  function isTemporaryVexPart(x){return !!(x&&x.i!=='P-000024'&&x.p==='VEX'&&active(x)&&!retired(x)&&!unavailable(x));}
   function applyTemporaryVexBaseline(){
     data().forEach(x=>{
+      if(x&&x.i==='P-000024'){x.a=0;x.ua=1;x.ni=1;x.iv=0;return;}
       if(!isTemporaryVexPart(x))return;
       x.a=TEST_VEX_QTY;
       x.ni=0;
@@ -127,12 +128,18 @@
   function submitRequest(){
     if(submitting||!requestDraft.length)return;
     const p=requestDraft[0].p;if(requestDraft.some(x=>x.p!==p)){alert('One request can contain only one program.');return;}
-    const target='studentPartsRequest';
+    const target='studentPartsRequest-'+Date.now()+'-'+Math.random().toString(36).slice(2,8);
     const popup=window.open('',target,'popup,width=520,height=420,resizable=yes,scrollbars=yes');
     if(!popup){alert('Allow popups for this site so your request can be submitted.');return;}
     const form=document.createElement('form');form.method='POST';form.action=BACKEND;form.target=target;form.style.display='none';
     hidden(form,'action','requestparts');hidden(form,'program',p);hidden(form,'items',JSON.stringify(requestDraft.map(x=>({partId:x.i,quantity:x.q}))));
     document.body.appendChild(form);submitting=true;clearStatus();renderDraft();form.submit();form.remove();
+  }
+
+  function errorMatchesCurrentDraft(message){
+    const ids=String(message||'').match(/P-\d{6}/g)||[];
+    if(!ids.length)return true;
+    return ids.some(id=>requestDraft.some(x=>x.i===id));
   }
 
   function handleBridge(payload){
@@ -142,6 +149,7 @@
     }else if(payload.type==='request-submitted'&&payload.ok){
       submitting=false;requestDraft=[];renderDraft();showStatus('Request submitted · '+payload.requestId,false);
     }else if(payload.type==='request-error'){
+      if(!errorMatchesCurrentDraft(payload.message||''))return;
       submitting=false;renderDraft();showStatus(payload.message||'The request could not be submitted.',true);
     }
   }
