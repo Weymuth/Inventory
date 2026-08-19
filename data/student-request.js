@@ -2,6 +2,7 @@
   if(!/\/student\.html$/i.test(location.pathname))return;
 
   const BACKEND='https://script.google.com/a/macros/mercersburg.edu/s/AKfycbwO-eAB-qrabGBpqbTpLWAkSUQUITiJQ3KPLIZEwjCJBN-wb8yyTgInNT-bXRbPinTA/exec';
+  const TEST_VEX_QTY=4;
   let requestDraft=[];
   let submitting=false;
 
@@ -11,9 +12,19 @@
   const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const retired=x=>bool(x&&x.ret)||String(x&&x.s||'').toUpperCase()==='RETIRED';
   const unavailable=x=>bool(x&&x.ua);
-  const notInventoried=x=>bool(x&&x.ni)||x&&x.iv===0;
   const active=x=>!(x&&(x.active===false||x.active===0));
+  const notInventoried=x=>bool(x&&x.ni)||x&&x.iv===0;
   const study=x=>bool(x&&x.sg);
+
+  function isTemporaryVexPart(x){return !!(x&&x.p==='VEX'&&active(x)&&!retired(x)&&!unavailable(x));}
+  function applyTemporaryVexBaseline(){
+    data().forEach(x=>{
+      if(!isTemporaryVexPart(x))return;
+      x.a=TEST_VEX_QTY;
+      x.ni=0;
+      x.iv=1;
+    });
+  }
 
   function mode(){return $('modeTitle')&&/study/i.test($('modeTitle').textContent||'')?'study':'request';}
   function program(){const b=document.querySelector('.pill.active[data-program]');return b?b.dataset.program:'VEX';}
@@ -45,6 +56,7 @@
   function clearStatus(){const b=$('requestStatus');if(b)b.className='request-status';}
 
   function rows(){
+    applyTemporaryVexBaseline();
     const q=searchText(),m=mode(),p=program();
     return data().filter(x=>{
       if(!active(x)||x.p!==p)return false;
@@ -82,12 +94,13 @@
     if(mode()!=='request'||!requestDraft.length){box.classList.remove('open');list.innerHTML='';renderGrid();return;}
     box.classList.add('open');
     if($('draftTitle'))$('draftTitle').textContent='Draft '+requestDraft[0].p+' Request · '+requestDraft.length+' item'+(requestDraft.length===1?'':'s');
-    list.innerHTML=requestDraft.map(x=>'<div class="request-line"><div class="request-part">'+esc(x.n)+'</div><input class="request-qty" type="number" min="1" max="999" step="1" value="'+x.q+'" onchange="updateRequestQty(\''+esc(x.i)+'\',this.value)"><button class="request-remove" type="button" onclick="removeRequestItem(\''+esc(x.i)+'\')">Remove</button></div>').join('');
+    list.innerHTML=requestDraft.map(x=>'<div class="request-line"><div class="request-part">'+esc(x.n)+'</div><input class="request-qty" type="number" min="1" max="999" step="1" value="'+x.q+'" onchange="updateRequestQty(\''+esc(x.i)+'\',this.value)"><button class="request-remove" type="button" onclick="removeRequestItem(\''+esc(x.i]+'\')">Remove</button></div>').join('');
     ensureSubmit();const submit=$('requestSubmitBtn');if(submit){submit.disabled=submitting;submit.textContent=submitting?'Submitting…':'Submit Request';}
     renderGrid();
   }
 
   window.addDraft=function(partId){
+    applyTemporaryVexBaseline();
     const x=data().find(i=>i.i===partId);if(!x||!active(x)||retired(x)||unavailable(x)||notInventoried(x))return;
     if(requestDraft.length&&requestDraft[0].p!==x.p){alert('One request can contain only one program.');return;}
     if(requestDraft.some(i=>i.i===partId))return;
@@ -111,14 +124,20 @@
 
   function handleBridge(payload){
     if(!payload||payload.source!=='robotics-inventory-backend')return;
-    if(payload.type==='request-submitted'&&payload.ok){submitting=false;requestDraft=[];renderDraft();showStatus('Request submitted · '+payload.requestId,false);}
-    else if(payload.type==='request-error'){submitting=false;renderDraft();showStatus(payload.message||'The request could not be submitted.',true);}
+    if(payload.type==='bootstrap'&&payload.ok){
+      setTimeout(()=>{applyTemporaryVexBaseline();renderDraft();renderGrid();},0);
+    }else if(payload.type==='request-submitted'&&payload.ok){
+      submitting=false;requestDraft=[];renderDraft();showStatus('Request submitted · '+payload.requestId,false);
+    }else if(payload.type==='request-error'){
+      submitting=false;renderDraft();showStatus(payload.message||'The request could not be submitted.',true);
+    }
   }
 
   window.addEventListener('load',function(){
+    applyTemporaryVexBaseline();
     installStyles();updateWording();statusBox();
     const originalOpen=window.openWorkspace;
-    if(typeof originalOpen==='function')window.openWorkspace=function(nextMode){originalOpen(nextMode);updateWording();setTimeout(()=>{renderDraft();renderGrid();},0);};
+    if(typeof originalOpen==='function')window.openWorkspace=function(nextMode){applyTemporaryVexBaseline();originalOpen(nextMode);updateWording();setTimeout(()=>{renderDraft();renderGrid();},0);};
 
     document.addEventListener('click',function(e){
       const b=e.target.closest&&e.target.closest('.pill[data-program]');if(!b||!requestDraft.length)return;
