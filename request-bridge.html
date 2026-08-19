@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Returning to Student Parts</title>
+  <style>body{margin:0;background:#f6f7f5;color:#17202a;font-family:Arial,sans-serif;padding:32px}.card{max-width:560px;margin:60px auto;background:#fff;border-top:6px solid #0B1A2E;border-radius:10px;padding:24px;box-shadow:0 10px 30px rgba(11,26,46,.12)}h1{color:#0B1A2E}</style>
+</head>
+<body>
+  <div class="card"><h1 id="title">Returning to Student Parts…</h1><p id="message">Passing the request result back to the student page.</p></div>
+  <script>
+    const p=new URLSearchParams(location.search);
+    const ok=p.get('ok')==='1';
+    const payload={
+      source:'robotics-inventory-backend',
+      type:ok?'request-submitted':'request-error',
+      ok:ok,
+      requestId:p.get('requestId')||'',
+      message:p.get('message')||''
+    };
+    const envelope={id:Date.now()+'-'+Math.random().toString(36).slice(2),payload:payload};
+    try{localStorage.setItem('roboticsInventoryBridgeEvent',JSON.stringify(envelope));}catch(e){}
+    try{const channel=new BroadcastChannel('robotics-inventory');channel.postMessage(payload);channel.close();}catch(e){}
+    try{if(window.opener&&!window.opener.closed)window.opener.postMessage(payload,location.origin);}catch(e){}
+    document.getElementById('title').textContent=ok?'Request submitted':'Request error';
+    document.getElementById('message').textContent=ok?('Request '+payload.requestId+' was submitted.'):(payload.message||'The request could not be submitted.');
+    setTimeout(function(){try{window.close();}catch(e){}},150);
+  </script>
+</body>
+</html>
