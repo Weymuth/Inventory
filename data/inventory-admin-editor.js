@@ -8,6 +8,14 @@
 
   function items(){return window.INVENTORY_DATA||[];}
   function part(partId){return items().find(function(x){return x.i===partId;});}
+  function currentDetailPartId(){
+    const el=document.getElementById('detailId');
+    const id=String(el&&el.textContent||'').trim().toUpperCase();
+    return /^P-\d{6}$/.test(id)?id:'';
+  }
+  function refreshDetailIf(partId){
+    if(currentDetailPartId()===partId&&typeof window.refreshDetail==='function')window.refreshDetail();
+  }
   function isRoboSource(x){
     if(!x)return false;
     return [x.vendor,x.v,x.source,x.src,x.supplier]
@@ -94,10 +102,12 @@
       button.textContent='Rename Part';
       button.addEventListener('click',function(event){
         event.stopPropagation();
-        if(!window.selectedItem)return;
-        const pasted=window.prompt('Rename this part:',window.selectedItem.n||'');
+        const partId=currentDetailPartId();
+        const x=part(partId);
+        if(!x)return;
+        const pasted=window.prompt('Rename this part:',x.n||'');
         if(pasted==null)return;
-        window.setPartName(window.selectedItem.i,pasted,event);
+        window.setPartName(partId,pasted,event);
       });
       detailName.parentElement.appendChild(button);
     }
@@ -110,7 +120,8 @@
       button.textContent='Update Image';
       button.addEventListener('click',function(event){
         event.stopPropagation();
-        if(window.selectedItem)promptImage(window.selectedItem.i,event);
+        const partId=currentDetailPartId();
+        if(partId)promptImage(partId,event);
       });
       detailImage.appendChild(button);
     }
@@ -152,7 +163,7 @@
     x.n=name;
     saveNameOverride(partId,name);
     if(typeof window.render==='function')window.render();
-    if(window.selectedItem&&window.selectedItem.i===partId&&typeof window.refreshDetail==='function')window.refreshDetail();
+    refreshDetailIf(partId);
   };
 
   function applyNameBridge(data){
@@ -162,7 +173,7 @@
       if(x&&data.partName){x.n=data.partName;saveNameOverride(data.partId,data.partName);}
       delete pendingNames[data.partId];
       if(typeof window.render==='function')window.render();
-      if(window.selectedItem&&window.selectedItem.i===data.partId&&typeof window.refreshDetail==='function')window.refreshDetail();
+      refreshDetailIf(data.partId);
       if(typeof window.showToast==='function')window.showToast('Part name saved');
       closeNamePopup();
     }else if(data.type==='part-name-error'){
@@ -173,7 +184,7 @@
       }
       delete pendingNames[data.partId];
       if(typeof window.render==='function')window.render();
-      if(window.selectedItem&&window.selectedItem.i===data.partId&&typeof window.refreshDetail==='function')window.refreshDetail();
+      refreshDetailIf(data.partId);
       if(typeof window.showToast==='function')window.showToast(data.message||'Part rename failed.');
       closeNamePopup();
     }
