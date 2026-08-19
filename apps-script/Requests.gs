@@ -8,18 +8,9 @@ function doPost(e){
 
     const user=requireInventoryUser_();
     const result=submitPartsRequest_(user,p);
-    return autoReturnPage_('Request submitted',buildFrontendUrl_({
-      bridge:'inventory-updated',
-      ok:'1',
-      partId:'REQUEST',
-      transactionId:result.requestId
-    }));
+    return requestReturnPage_(true,result.requestId,'');
   }catch(err){
-    return autoReturnPage_('Request error',buildFrontendUrl_({
-      bridge:'inventory-error',
-      ok:'0',
-      message:safeError_(err)
-    }));
+    return requestReturnPage_(false,'',safeError_(err));
   }
 }
 
@@ -40,8 +31,8 @@ function submitPartsRequest_(user,p){
     if(!/^P-\d{6}$/.test(partId))throw new Error('One of the requested PartIDs is invalid.');
     if(!Number.isFinite(quantity)||quantity<=0||Math.floor(quantity)!==quantity||quantity>999)
       throw new Error('Requested quantities must be whole numbers from 1 to 999.');
-    quantities[partId]=(quantities[partId]||0)+quantity;
-    if(quantities[partId]>999)throw new Error('A requested quantity cannot exceed 999.');
+    if(Object.prototype.hasOwnProperty.call(quantities,partId))throw new Error('The same part cannot appear twice in one request.');
+    quantities[partId]=quantity;
   });
 
   const lock=LockService.getScriptLock();
@@ -56,7 +47,7 @@ function submitPartsRequest_(user,p){
     const partValues=parts.getDataRange().getValues();
     if(!partValues.length)throw new Error('PARTS sheet is empty.');
     const ph=headerMap_(partValues[0]);
-    ['PartID','Program','Active','ProductStatus','Unavailable'].forEach(name=>{
+    ['PartID','Program','Active','ProductStatus','Unavailable','NotInventoried'].forEach(name=>{
       if(ph[name]===undefined)throw new Error('PARTS '+name+' column is missing.');
     });
 
@@ -69,13 +60,17 @@ function submitPartsRequest_(user,p){
       const active=row[ph.Active]===true||String(row[ph.Active]).toUpperCase()==='TRUE';
       const retired=String(row[ph.ProductStatus]||'').trim().toUpperCase()==='RETIRED';
       const unavailable=row[ph.Unavailable]===true||String(row[ph.Unavailable]).toUpperCase()==='TRUE';
+      const notInventoried=row[ph.NotInventoried]===true||String(row[ph.NotInventoried]).toUpperCase()==='TRUE';
       if(rowProgram!==program)throw new Error(partId+' is not in the selected program.');
-      if(!active||retired||unavailable)throw new Error(partId+' is not currently requestable.');
+      if(!active)throw new Error(partId+' is inactive and cannot be requested.');
+      if(retired)throw new Error(partId+' is retired and cannot be requested.');
+      if(unavailable)throw new Error(partId+' is marked unavailable and cannot be requested.');
+      if(notInventoried)throw new Error(partId+' is reference-only and cannot be requested.');
       allowed[partId]=true;
     }
 
     Object.keys(quantities).forEach(partId=>{
-      if(!allowed[partId])throw new Error(partId+' was not found in the active parts catalog.');
+      if(!allowed[partId])throw new Error(partId+' was not found in the active requestable catalog.');
     });
 
     const requestHeaders=requests.getRange(1,1,1,requests.getLastColumn()).getValues()[0];
@@ -103,7 +98,7 @@ function submitPartsRequest_(user,p){
       return row;
     });
 
-    const startRow=requests.getLastRow()+1;
+    const startRow=Math.max(2,requests.getLastRow()+1);
     requests.getRange(startRow,1,rows.length,requestHeaders.length).setValues(rows);
     SpreadsheetApp.flush();
     return{requestId:requestId,itemCount:rows.length};
@@ -115,4 +110,13 @@ function submitPartsRequest_(user,p){
 function makeRequestId_(){
   const stamp=Utilities.formatDate(new Date(),CONFIG.TIME_ZONE,'yyyyMMdd-HHmmss');
   return 'REQ-'+stamp+'-'+Utilities.getUuid().slice(0,6).toUpperCase();
+}
+
+function requestReturnPage_(ok,requestId,message){
+  const params=['ok='+(ok?'1':'0')];
+  if(requestId)params.push('requestId='+encodeURIComponent(String(requestId)));
+  if(message)params.push('message='+encodeURIComponent(String(message)));
+  const url=CONFIG.FRONTEND_ORIGIN+'/Inventory/request-bridge.html?'+params.join('&');
+  const target=JSON.stringify(url).replace(/</g,'\\u003c');
+  return HtmlService.createHtmlOutput('<!doctype html><html><head><meta charset="utf-8"><title>Submitting request</title></head><body><p>Saving request…</p><script>window.location.replace('+target+');</script></body></html>');
 }
