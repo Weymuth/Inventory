@@ -18,9 +18,14 @@ function doPost(e){
       const result=decideRequest_(user,p);
       return requestQueuePage_(true,user,loadRequestQueue_(),result.message);
     }
+    if(action==='requestdecisions'){
+      const user=requireTeacherOrAdmin_();
+      const result=decideRequestItems_(user,p);
+      return requestQueuePage_(true,user,loadRequestQueue_(),result.message);
+    }
     throw new Error('Unknown backend action.');
   }catch(err){
-    if(action==='requestqueue'||action==='requestdecision')return requestQueuePage_(false,null,[],safeError_(err));
+    if(action==='requestqueue'||action==='requestdecision'||action==='requestdecisions')return requestQueuePage_(false,null,[],safeError_(err));
     return requestReturnPage_(false,'',safeError_(err));
   }
 }
@@ -191,6 +196,81 @@ function decideRequest_(user,p){
     });
     SpreadsheetApp.flush();
     return{requestId:requestId,status:decision==='APPROVE'?'APPROVED':'DENIED',message:'Request '+requestId+' '+(decision==='APPROVE'?'approved.':'denied.')};
+  }finally{
+    lock.releaseLock();
+  }
+}
+
+function decideRequestItems_(user,p){
+  let raw;
+  try{raw=JSON.parse(String(p.decisions||'[]'));}
+  catch(e){throw new Error('The decision list is invalid.');}
+  if(!Array.isArray(raw)||!raw.length)throw new Error('Choose at least one item before submitting decisions.');
+  if(raw.length>250)throw new Error('Too many decisions were submitted at once.');
+
+  const decisions=[];
+  const seen={};
+  raw.forEach(item=>{
+    const requestId=String(item&&item.requestId||'').trim().toUpperCase();
+    const partId=String(item&&item.partId||'').trim().toUpperCase();
+    const decision=String(item&&item.decision||'').trim().toUpperCase();
+    const approvedQty=Number(item&&item.approvedQty);
+    if(!/^REQ-[A-Z0-9-]+$/.test(requestId))throw new Error('One RequestID is invalid.');
+    if(!/^P-\d{6}$/.test(partId))throw new Error('One PartID is invalid.');
+    if(!['APPROVE','DENY'].includes(decision))throw new Error('Each item must be approved or declined.');
+    if(decision==='APPROVE'&&(!Number.isInteger(approvedQty)||approvedQty<1||approvedQty>999))throw new Error('Approved quantities must be positive whole numbers.');
+    const k=requestId+'|'+partId;
+    if(seen[k])throw new Error('The same requested item was submitted twice.');
+    seen[k]=true;
+    decisions.push({requestId:requestId,partId:partId,decision:decision,approvedQty:decision==='APPROVE'?approvedQty:0});
+  });
+
+  const lock=LockService.getScriptLock();
+  lock.waitLock(30000);
+  try{
+    const ss=SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const requests=ss.getSheetByName(REQUESTS_SHEET_NAME);
+    if(!requests)throw new Error('REQUESTS sheet is missing.');
+    const values=requests.getDataRange().getValues();
+    if(values.length<2)throw new Error('No requests are available.');
+    const rh=headerMap_(values[0]);
+    ['RequestID','PartID','RequestedQty','Status','ApprovedQty','ApproverEmail','DecisionAt'].forEach(name=>{
+      if(rh[name]===undefined)throw new Error('REQUESTS '+name+' column is missing.');
+    });
+
+    const rowByKey={};
+    for(let r=1;r<values.length;r++){
+      const requestId=String(values[r][rh.RequestID]||'').trim().toUpperCase();
+      const partId=String(values[r][rh.PartID]||'').trim().toUpperCase();
+      if(!requestId||!partId)continue;
+      const k=requestId+'|'+partId;
+      if(rowByKey[k]!==undefined)throw new Error('Duplicate request item found for '+requestId+' / '+partId+'.');
+      rowByKey[k]=r;
+    }
+
+    decisions.forEach(d=>{
+      const k=d.requestId+'|'+d.partId;
+      const r=rowByKey[k];
+      if(r===undefined)throw new Error(d.requestId+' / '+d.partId+' was not found.');
+      const row=values[r];
+      const status=String(row[rh.Status]||'').trim().toUpperCase();
+      if(status!=='SUBMITTED')throw new Error(d.requestId+' / '+d.partId+' has already been decided. Refresh the queue.');
+      const requested=Number(row[rh.RequestedQty]||0);
+      if(d.decision==='APPROVE'&&d.approvedQty>requested)throw new Error(d.partId+' requested '+requested+'; approval cannot exceed that quantity.');
+    });
+
+    const now=new Date();
+    decisions.forEach(d=>{
+      const r=rowByKey[d.requestId+'|'+d.partId];
+      requests.getRange(r+1,rh.Status+1,1,4).setValues([[
+        d.decision==='APPROVE'?'APPROVED':'DENIED',
+        d.decision==='APPROVE'?d.approvedQty:0,
+        user.email,
+        now
+      ]]);
+    });
+    SpreadsheetApp.flush();
+    return{count:decisions.length,message:decisions.length+' decision'+(decisions.length===1?'':'s')+' saved.'};
   }finally{
     lock.releaseLock();
   }
