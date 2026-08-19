@@ -1,4 +1,4 @@
-document.write('<script src="data/inventory-data-7.js?v=20260819-0842"><\/script><script src="data/inventory-data-8.js?v=20260819-0900"><\/script><script src="data/inventory-data-9.js?v=20260819-0915"><\/script>');
+document.write('<script src="data/inventory-data-7.js?v=20260819-0842"><\/script><script src="data/inventory-data-8.js?v=20260819-0900"><\/script><script src="data/inventory-data-9.js?v=20260819-0915"><\/script><script src="data/inventory-data-10.js?v=20260819-0930"><\/script>');
 // Student catalog visibility fix.
 // The first student build hid VEX parts when the static snapshot had zero units,
 // which made real catalog records (including V5 motors) disappear from search.
