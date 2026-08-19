@@ -11,6 +11,7 @@
   const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const retired=x=>bool(x&&x.ret)||String(x&&x.s||'').toUpperCase()==='RETIRED';
   const unavailable=x=>bool(x&&x.ua);
+  const notInventoried=x=>bool(x&&x.ni)||x&&x.iv===0;
   const active=x=>!(x&&(x.active===false||x.active===0));
   const study=x=>bool(x&&x.sg);
 
@@ -30,7 +31,7 @@
     if(right&&/order what you need/i.test(right.textContent||''))right.innerHTML='Request what you need.<br><strong>Learn what you use.</strong>';
     document.querySelectorAll('.choice h2').forEach(h=>{if(/^Order Parts$/i.test(h.textContent||''))h.textContent='Request Parts';});
     if($('modeTitle')&&/^Order Parts$/i.test($('modeTitle').textContent||''))$('modeTitle').textContent='Request Parts';
-    if($('modeHint')&&mode()==='request')$('modeHint').textContent='Current parts can be requested even when availability is 0.';
+    if($('modeHint')&&mode()==='request')$('modeHint').textContent='Current inventoried parts can be requested even when availability is 0.';
     const note=document.querySelector('.draft-note');if(note)note.textContent='Set the quantity for each part, then submit your request.';
   }
 
@@ -47,7 +48,7 @@
     const q=searchText(),m=mode(),p=program();
     return data().filter(x=>{
       if(!active(x)||x.p!==p)return false;
-      if(m==='request'&&(retired(x)||unavailable(x)))return false;
+      if(m==='request'&&(retired(x)||unavailable(x)||notInventoried(x)))return false;
       if(m==='study'&&!study(x))return false;
       return !q||[x.i,x.n,x.m,x.x,x.c,x.p].some(v=>String(v||'').toLowerCase().includes(q));
     });
@@ -87,7 +88,7 @@
   }
 
   window.addDraft=function(partId){
-    const x=data().find(i=>i.i===partId);if(!x||!active(x)||retired(x)||unavailable(x))return;
+    const x=data().find(i=>i.i===partId);if(!x||!active(x)||retired(x)||unavailable(x)||notInventoried(x))return;
     if(requestDraft.length&&requestDraft[0].p!==x.p){alert('One request can contain only one program.');return;}
     if(requestDraft.some(i=>i.i===partId))return;
     requestDraft.push({i:x.i,n:x.n,p:x.p,q:1});clearStatus();renderDraft();
