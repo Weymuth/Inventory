@@ -28,8 +28,6 @@
       .some(function(value){return /robosource/i.test(String(value||''));});
   }
 
-  // RoboSource is a purchasing/source relationship; these parts belong under
-  // the VEX program button even when RoboSource itself is not the manufacturer.
   function normalizeProgramLinks(){
     items().forEach(function(x){if(isRoboSource(x))x.p='VEX';});
   }
@@ -151,14 +149,12 @@
     if(stat)stat.textContent=activeCount;
 
     const result=document.getElementById('resultCount');
-    if(result){
-      result.textContent=visible+' part'+(visible===1?'':'s')+' shown';
-    }
+    if(result)result.textContent=visible+' part'+(visible===1?'':'s')+' shown';
 
     const grid=document.getElementById('grid');
     if(grid){
       const old=grid.querySelector('[data-delete-empty="1"]');
-      if(old)old.remove();
+      if(visible>0&&old)old.remove();
       if(visible===0&&!grid.querySelector('.empty')){
         const empty=document.createElement('div');
         empty.className='empty';
