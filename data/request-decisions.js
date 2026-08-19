@@ -4,13 +4,13 @@
   const BACKEND='https://script.google.com/a/macros/mercersburg.edu/s/AKfycbwO-eAB-qrabGBpqbTpLWAkSUQUITiJQ3KPLIZEwjCJBN-wb8yyTgInNT-bXRbPinTA/exec';
   let latestRequests=[];
 
-  const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 
   function installStyles(){
     if(document.getElementById('request-decision-css'))return;
     const s=document.createElement('style');
     s.id='request-decision-css';
-    s.textContent='.rq-approve-input{width:72px;border:1px solid #cbd1d5;border-radius:6px;padding:6px 7px;font:inherit}.rq-decision-panel{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:11px 14px;background:#fafbf9;border-top:1px solid #e5e8e6}.rq-decision-note{margin-right:auto;font-size:10px;color:#67727c}.rq-decision-btn{border:0;border-radius:7px;padding:8px 11px;font-weight:850;cursor:pointer}.rq-decision-btn.approve{background:#256b49;color:white}.rq-decision-btn.deny{background:#8a352f;color:white}.rq-decision-btn:disabled{opacity:.45;cursor:not-allowed}.rq-result{border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:11px;font-weight:800}.rq-result.ok{background:#edf7f1;border:1px solid #b8d9c5;color:#256b49}.rq-result.error{background:#fff4f2;border:1px solid #e7bbb7;color:#7f2d27}@media(max-width:720px){.rq-decision-panel{align-items:stretch;flex-direction:column}.rq-decision-note{margin-right:0}}';
+    s.textContent='.rq-approve-input{width:72px;border:1px solid #cbd1d5;border-radius:6px;padding:6px 7px;font:inherit}.rq-decision-panel{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:11px 14px;background:#fafbf9;border-top:1px solid #e5e8e6}.rq-decision-note{margin-right:auto;font-size:10px;color:#67727c}.rq-decision-btn{border:0;border-radius:7px;padding:8px 11px;font-weight:850;cursor:pointer}.rq-decision-btn.approve{background:#256b49;color:white}.rq-decision-btn.deny{background:#8a352f;color:white}.rq-decision-btn:disabled{opacity:.45;cursor:not-allowed}.rq-result{border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:11px;font-weight:800}.rq-result.ok{background:#edf7f1;border:1px solid #b8d9c5;color:#256b49}.rq-result.error{background:#fff4f2;border:1px solid #e7bbb7;color:#7f2d27}.rq-saving{background:#eef3fa;border:1px solid #b9cbe0;color:#365b80;border-radius:9px;padding:10px 12px;margin:0 14px 11px;font-size:11px;font-weight:800}@media(max-width:720px){.rq-decision-panel{align-items:stretch;flex-direction:column}.rq-decision-note{margin-right:0}}';
     document.head.appendChild(s);
   }
 
@@ -36,7 +36,7 @@
 
       const panel=document.createElement('div');
       panel.className='rq-decision-panel';
-      panel.innerHTML='<span class="rq-decision-note">Adjust approved quantities if needed. Inventory is not changed at this step.</span><button class="rq-decision-btn deny" type="button">Deny Request</button><button class="rq-decision-btn approve" type="button">Approve Request</button>';
+      panel.innerHTML='<span class="rq-decision-note">Adjust quantities if needed, then click a Save button to record the decision.</span><button class="rq-decision-btn deny" type="button">Deny &amp; Save</button><button class="rq-decision-btn approve" type="button">Approve &amp; Save</button>';
       panel.querySelector('.deny').onclick=()=>submitDecision(card,requestId,'DENY');
       panel.querySelector('.approve').onclick=()=>submitDecision(card,requestId,'APPROVE');
       card.appendChild(panel);
@@ -44,7 +44,14 @@
     });
   }
 
-  function setBusy(card,busy){card.querySelectorAll('.rq-decision-btn,.rq-approve-input').forEach(el=>el.disabled=!!busy);}
+  function setBusy(card,busy,decision){
+    card.querySelectorAll('.rq-decision-btn,.rq-approve-input').forEach(el=>el.disabled=!!busy);
+    let msg=card.querySelector('.rq-saving');
+    if(busy){
+      if(!msg){msg=document.createElement('div');msg.className='rq-saving';card.appendChild(msg);}
+      msg.textContent=decision==='APPROVE'?'Saving approval…':'Saving denial…';
+    }else if(msg){msg.remove();}
+  }
 
   function submitDecision(card,requestId,decision){
     const request=requestById(requestId);if(!request)return;
@@ -59,15 +66,16 @@
         approvals.push({partId:input.dataset.partId,quantity:qty});
       }
       if(approvals.length!==(request.items||[]).length){alert('Could not read all approval quantities. Refresh the queue and try again.');return;}
-    }else if(!confirm('Deny this entire request?'))return;
+      if(!confirm('Approve and save this request now?'))return;
+    }else if(!confirm('Deny and save this entire request now?'))return;
 
-    setBusy(card,true);
+    setBusy(card,true,decision);
     const target='requestDecisionFrame_'+Date.now();
     const frame=document.createElement('iframe');frame.name=target;frame.style.display='none';frame.setAttribute('aria-hidden','true');document.body.appendChild(frame);
     const form=document.createElement('form');form.method='POST';form.action=BACKEND;form.target=target;form.style.display='none';
     [['action','requestdecision'],['requestId',requestId],['decision',decision],['approvals',JSON.stringify(approvals)]].forEach(pair=>{const i=document.createElement('input');i.type='hidden';i.name=pair[0];i.value=pair[1];form.appendChild(i);});
     document.body.appendChild(form);form.submit();form.remove();
-    setTimeout(()=>{try{frame.remove();}catch(e){}},15000);
+    setTimeout(()=>{try{frame.remove();}catch(e){};setBusy(card,false,decision);},15000);
   }
 
   function trustedOrigin(origin){return origin===location.origin||/^https:\/\/(?:script\.google\.com|[^/]+\.googleusercontent\.com)$/.test(origin||'');}
