@@ -1,15 +1,23 @@
 const REQUESTS_SHEET_NAME='REQUESTS';
 
 function doPost(e){
+  const p=(e&&e.parameter)||{};
+  const action=String(p.action||'').trim().toLowerCase();
   try{
-    const p=(e&&e.parameter)||{};
-    const action=String(p.action||'').trim().toLowerCase();
-    if(action!=='requestparts')throw new Error('Unknown backend action.');
+    if(action==='requestparts'){
+      const user=requireInventoryUser_();
+      const result=submitPartsRequest_(user,p);
+      return requestReturnPage_(true,result.requestId,'');
+    }
 
-    const user=requireInventoryUser_();
-    const result=submitPartsRequest_(user,p);
-    return requestReturnPage_(true,result.requestId,'');
+    if(action==='requestqueue'){
+      const user=requireTeacherOrAdmin_();
+      return requestQueuePage_(true,user,loadRequestQueue_(),'');
+    }
+
+    throw new Error('Unknown backend action.');
   }catch(err){
+    if(action==='requestqueue')return requestQueuePage_(false,null,[],safeError_(err));
     return requestReturnPage_(false,'',safeError_(err));
   }
 }
@@ -105,6 +113,91 @@ function submitPartsRequest_(user,p){
   }finally{
     lock.releaseLock();
   }
+}
+
+function loadRequestQueue_(){
+  const ss=SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const requests=ss.getSheetByName(REQUESTS_SHEET_NAME);
+  const parts=ss.getSheetByName(CONFIG.PARTS_SHEET);
+  if(!requests||!parts)throw new Error('Required request queue sheets are missing.');
+
+  const requestValues=requests.getDataRange().getValues();
+  if(!requestValues.length)return[];
+  const rh=headerMap_(requestValues[0]);
+  ['RequestID','RequestedAt','RequesterEmail','StudentID','Program','PartID','RequestedQty','Status','ApprovedQty','FulfilledQty','Notes'].forEach(name=>{
+    if(rh[name]===undefined)throw new Error('REQUESTS '+name+' column is missing.');
+  });
+
+  const partValues=parts.getDataRange().getValues();
+  const ph=partValues.length?headerMap_(partValues[0]):{};
+  const partNames={};
+  if(ph.PartID!==undefined&&ph.PartName!==undefined){
+    for(let r=1;r<partValues.length;r++){
+      const id=String(partValues[r][ph.PartID]||'').trim().toUpperCase();
+      if(id)partNames[id]=String(partValues[r][ph.PartName]||'').trim();
+    }
+  }
+
+  const grouped={};
+  for(let r=1;r<requestValues.length;r++){
+    const row=requestValues[r];
+    const requestId=String(row[rh.RequestID]||'').trim();
+    if(!requestId)continue;
+    if(!grouped[requestId]){
+      const rawDate=row[rh.RequestedAt];
+      let requestedAt=rawDate instanceof Date?rawDate.getTime():new Date(rawDate||0).getTime();
+      if(!Number.isFinite(requestedAt))requestedAt=0;
+      grouped[requestId]={
+        requestId:requestId,
+        requestedAt:requestedAt,
+        requesterEmail:String(row[rh.RequesterEmail]||'').trim(),
+        studentId:String(row[rh.StudentID]||'').trim(),
+        program:String(row[rh.Program]||'').trim(),
+        statuses:{},
+        items:[]
+      };
+    }
+    const g=grouped[requestId];
+    const status=String(row[rh.Status]||'').trim().toUpperCase()||'UNKNOWN';
+    g.statuses[status]=true;
+    const partId=String(row[rh.PartID]||'').trim().toUpperCase();
+    g.items.push({
+      partId:partId,
+      partName:partNames[partId]||partId,
+      requestedQty:Number(row[rh.RequestedQty]||0),
+      approvedQty:row[rh.ApprovedQty]===''?'':Number(row[rh.ApprovedQty]||0),
+      fulfilledQty:row[rh.FulfilledQty]===''?'':Number(row[rh.FulfilledQty]||0),
+      notes:String(row[rh.Notes]||'').trim()
+    });
+  }
+
+  return Object.keys(grouped).map(id=>{
+    const g=grouped[id];
+    const statuses=Object.keys(g.statuses);
+    return{
+      requestId:g.requestId,
+      requestedAt:g.requestedAt,
+      requesterEmail:g.requesterEmail,
+      studentId:g.studentId,
+      program:g.program,
+      status:statuses.length===1?statuses[0]:'MIXED',
+      items:g.items
+    };
+  }).sort((a,b)=>b.requestedAt-a.requestedAt).slice(0,250);
+}
+
+function requestQueuePage_(ok,user,requests,message){
+  const payload={
+    source:'robotics-inventory-backend',
+    type:ok?'request-queue':'request-queue-error',
+    ok:!!ok,
+    requests:ok?requests:[],
+    user:user?{email:user.email,firstName:user.firstName,lastName:user.lastName,role:user.role}:null,
+    message:String(message||'')
+  };
+  const payloadJson=JSON.stringify(payload).replace(/</g,'\\u003c');
+  const targetOrigin=JSON.stringify(CONFIG.FRONTEND_ORIGIN).replace(/</g,'\\u003c');
+  return HtmlService.createHtmlOutput('<!doctype html><html><head><meta charset="utf-8"><title>Request Queue</title></head><body><p>Loading request queue…</p><script>const payload='+payloadJson+',targetOrigin='+targetOrigin+';function send(){try{if(window.opener&&!window.opener.closed)window.opener.postMessage(payload,targetOrigin);}catch(e){}try{if(window.top&&window.top.opener&&!window.top.opener.closed)window.top.opener.postMessage(payload,targetOrigin);}catch(e){}}send();setTimeout(function(){try{window.top.close();}catch(e){try{window.close();}catch(x){}}},300);</script></body></html>');
 }
 
 function makeRequestId_(){
