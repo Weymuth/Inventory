@@ -115,6 +115,22 @@
         partId:p.get('partId')||'',
         message:p.get('message')||'Part rename failed.'
       };
+    }else if(bridge==='part-active-updated'){
+      payload={
+        source:'robotics-inventory-backend',
+        type:'part-active-updated',
+        ok:p.get('ok')==='1',
+        partId:p.get('partId')||'',
+        active:p.get('active')==='1'
+      };
+    }else if(bridge==='part-active-error'){
+      payload={
+        source:'robotics-inventory-backend',
+        type:'part-active-error',
+        ok:false,
+        partId:p.get('partId')||'',
+        message:p.get('message')||'Delete/restore failed.'
+      };
     }else if(bridge==='inventory-error'){
       payload={source:'robotics-inventory-backend',type:'inventory-error',ok:false,message:p.get('message')||'Inventory update failed.'};
     }
@@ -155,11 +171,21 @@
       }catch(e){}
     }
 
+    function persistPartActive(data){
+      if(!data||data.type!=='part-active-updated'||!data.ok||!data.partId)return;
+      try{
+        const all=JSON.parse(localStorage.getItem('roboticsInventoryActiveOverrides')||'{}');
+        all[data.partId]=!!data.active;
+        localStorage.setItem('roboticsInventoryActiveOverrides',JSON.stringify(all));
+      }catch(e){}
+    }
+
     function deliverPayload(data){
       if(!data)return;
       persistPartFlags(data);
       persistPartImage(data);
       persistPartName(data);
+      persistPartActive(data);
       const envelope={id:Date.now()+'-'+Math.random().toString(36).slice(2),payload:data};
 
       try{localStorage.setItem('roboticsInventoryBridgeEvent',JSON.stringify(envelope));}catch(e){}
