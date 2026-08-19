@@ -94,7 +94,7 @@
     if(mode()!=='request'||!requestDraft.length){box.classList.remove('open');list.innerHTML='';renderGrid();return;}
     box.classList.add('open');
     if($('draftTitle'))$('draftTitle').textContent='Draft '+requestDraft[0].p+' Request · '+requestDraft.length+' item'+(requestDraft.length===1?'':'s');
-    list.innerHTML=requestDraft.map(x=>'<div class="request-line"><div class="request-part">'+esc(x.n)+'</div><input class="request-qty" type="number" min="1" max="999" step="1" value="'+x.q+'" onchange="updateRequestQty(\''+esc(x.i)+'\',this.value)"><button class="request-remove" type="button" onclick="removeRequestItem(\''+esc(x.i]+'\')">Remove</button></div>').join('');
+    list.innerHTML=requestDraft.map(x=>'<div class="request-line"><div class="request-part">'+esc(x.n)+'</div><input class="request-qty" type="number" min="1" max="999" step="1" value="'+x.q+'" onchange="updateRequestQty(\''+esc(x.i)+'\',this.value)"><button class="request-remove" type="button" onclick="removeRequestItem(\''+esc(x.i)+'\')">Remove</button></div>').join('');
     ensureSubmit();const submit=$('requestSubmitBtn');if(submit){submit.disabled=submitting;submit.textContent=submitting?'Submitting…':'Submit Request';}
     renderGrid();
   }
